@@ -5,129 +5,115 @@ import Selecto from "react-selecto";
 import Moveable from "react-moveable";
 import InfiniteViewer from "react-infinite-viewer";
 import { cn } from "@/lib/utils";
-import { EditorContextType } from "../use-editor";
+import type { EditorContextType } from "../use-editor";
 import TextBlock from "./blocks/text-block";
 import FrameBlock from "./blocks/frame-block";
 import { EditorDimensionViewable } from "./block-extensions";
 import ZoomHandler from "./zoomable";
-import {
+import type {
   IEditorBlockFrame,
   IEditorBlockImage,
   IEditorBlockText,
+  IEditorBlocks,
 } from "../editor-types";
 import ImageBlock from "./blocks/img-block";
 import { calculateDefaultZoom } from "../utils";
 
+const MOVEABLE_DIRECTIONS = [
+  "nw",
+  "n",
+  "ne",
+  "w",
+  "e",
+  "sw",
+  "s",
+  "se",
+] as const;
+
+const buildBlockTransform = (block: IEditorBlocks) => {
+  const transforms = [`translate(${block.x}px, ${block.y}px)`];
+  if (block?.flip?.verticle) {
+    transforms.push("scaleY(-1)");
+  }
+  if (block?.flip?.horizontal) {
+    transforms.push("scaleX(-1)");
+  }
+  if (block.rotate?.type === "2d") {
+    transforms.push(`rotate(${block.rotate?.value ?? 0}deg)`);
+  } else if (block.rotate?.type === "3d") {
+    transforms.push(
+      `rotateX(${block.rotate?.valueX ?? 0}deg)`,
+      `rotateY(${block.rotate?.valueY ?? 0}deg)`,
+      `rotateZ(${block.rotate?.valueZ ?? 0}deg)`
+    );
+  }
+  return transforms.join(" ");
+};
+
 function EditorCanvas({ editor }: { editor: EditorContextType }) {
-  const canvasContainerRef = React.useRef<HTMLDivElement>(null);
+  const canvasWrapperRef = React.useRef<HTMLDivElement>(null);
   const infiniteViewerRef = React.useRef<InfiniteViewer>(null);
   const moveableRef = React.useRef<Moveable>(null);
   const selectoRef = React.useRef<Selecto>(null);
+  const [dimensionVisible, setDimensionVisible] = React.useState(false);
+  const [isDragging, setIsDragging] = React.useState(false);
+
   React.useEffect(() => {
-    infiniteViewerRef.current!.scrollCenter();
+    infiniteViewerRef.current?.scrollCenter();
   }, []);
 
   React.useEffect(() => {
-    const elms = document.querySelectorAll(".editor-canvas .editor-block");
-    const sidebarElms = document.querySelectorAll(
-      ".editor-left-side .sidebar-item"
-    );
-
-    const target = document.querySelector(".hovered") as any;
-    elms.forEach((elm) => {
-      if (!elm.classList.contains("hover-event-added")) {
-        elm.classList.add("hover-event-added");
-        elm.addEventListener("mouseenter", () => {
-          if (
-            !moveableRef.current?.isDragging() &&
-            // @ts-ignore
-            moveableRef.current?.refTargets?.[0]?.id !== elm.id &&
-            !document.querySelector(".editor-canvas-scroll.move")
-          ) {
-            const style = window.getComputedStyle(elm);
-            target.style.display = "block";
-            target.style.width = style.width;
-            target.style.height = style.height;
-            target.style.transform = style.transform;
-          }
-        });
-        elm.addEventListener("mouseleave", () => {
-          target.style.display = null;
-        });
-      }
-    });
-    sidebarElms.forEach((elm) => {
-      if (!elm.classList.contains("hover-event-added")) {
-        elm.classList.add("hover-event-added");
-        elm.addEventListener("mouseenter", () => {
-          const blockId = elm.getAttribute("data-block-id");
-          if (
-            !moveableRef.current?.isDragging() &&
-            // @ts-ignore
-            moveableRef.current?.refTargets?.[0]?.id !== blockId &&
-            !document.querySelector(".editor-canvas-scroll.move")
-          ) {
-            const block = document.querySelector(`.block-${blockId}`);
-            if (block) {
-              const style = window.getComputedStyle(block);
-              target.style.display = "block";
-              target.style.width = style.width;
-              target.style.height = style.height;
-              target.style.transform = style.transform;
-            }
-          }
-        });
-        elm.addEventListener("mouseleave", () => {
-          target.style.display = null;
-        });
-      }
-    });
-  }, [editor.blocks.length]);
-
-  React.useEffect(() => {
-    if (editor?.selectedBlocks?.length === 1) {
-      const block = editor.selectedBlocks?.[0];
-      if (!block) {
-        return;
-      }
-      const width = block.scrollWidth;
-      const height = block.scrollHeight;
-      const leftResizer = document.querySelector(
-        ".moveable-w.moveable-resizable"
-      ) as any;
-      const rightResizer = document.querySelector(
-        ".moveable-e.moveable-resizable"
-      ) as any;
-      const topResizer = document.querySelector(
-        ".moveable-n.moveable-resizable"
-      ) as any;
-      const bottomResizer = document.querySelector(
-        ".moveable-s.moveable-resizable"
-      ) as any;
-
-      if (height < 60 && leftResizer && rightResizer) {
-        leftResizer.style.display = "none";
-        rightResizer.style.display = "none";
-      } else {
-        leftResizer.style.display = null;
-        rightResizer.style.display = null;
-      }
-
-      if (width < 60 && topResizer && bottomResizer) {
-        topResizer.style.display = "none";
-        bottomResizer.style.display = "none";
-      } else {
-        topResizer.style.display = null;
-        bottomResizer.style.display = null;
-      }
+    if (editor.canvasState.mode === "move") {
+      editor.setHoveredBlockId(null);
     }
-  }, [editor.selectedBlocks]);
+  }, [editor.canvasState.mode, editor.setHoveredBlockId]);
+
+  const hoverOverlayStyle = React.useMemo<React.CSSProperties | undefined>(() => {
+    if (
+      !editor.hoveredBlockId ||
+      editor.canvasState.mode === "move" ||
+      editor.canvasState.isTextEditing ||
+      isDragging
+    ) {
+      return undefined;
+    }
+
+    const block = editor.blocks.find((item) => item.id === editor.hoveredBlockId);
+    if (!block || !block.visible) {
+      return undefined;
+    }
+
+    if (
+      editor.selectedBlocks.length === 1 &&
+      editor.selectedBlocks[0]?.id === block.id
+    ) {
+      return undefined;
+    }
+
+    return {
+      display: "block",
+      width: block.width,
+      height: block.height,
+      transform: buildBlockTransform(block),
+    };
+  }, [
+    editor.blocks,
+    editor.canvasState.isTextEditing,
+    editor.canvasState.mode,
+    editor.hoveredBlockId,
+    editor.selectedBlocks,
+    isDragging,
+  ]);
 
   React.useEffect(() => {
+    const container = canvasWrapperRef.current;
+    if (!container) {
+      return;
+    }
     const defaultZoom = calculateDefaultZoom(
       editor.canvasState.size.width,
       editor.canvasState.size.height,
-      document.querySelector(".infinite-viewer-wrapper") as HTMLDivElement
+      container
     );
     infiniteViewerRef.current?.setZoom(defaultZoom);
     infiniteViewerRef.current?.scrollCenter();
@@ -137,8 +123,32 @@ function EditorCanvas({ editor }: { editor: EditorContextType }) {
     });
   }, []);
 
+  const renderDirections = React.useMemo(() => {
+    const defaultDirections = [...MOVEABLE_DIRECTIONS];
+    if (editor.selectedBlocks.length !== 1) {
+      return defaultDirections;
+    }
+    const selectedId = editor.selectedBlocks[0]?.id;
+    if (!selectedId) {
+      return defaultDirections;
+    }
+    const block = editor.blocks.find((item) => item.id === selectedId);
+    if (!block) {
+      return defaultDirections;
+    }
+    return defaultDirections.filter((direction) => {
+      if (block.height < 60 && (direction === "w" || direction === "e")) {
+        return false;
+      }
+      if (block.width < 60 && (direction === "n" || direction === "s")) {
+        return false;
+      }
+      return true;
+    });
+  }, [editor.blocks, editor.selectedBlocks]);
+
   return (
-    <div className="flex-1 w-full h-full relative">
+    <div ref={canvasWrapperRef} className="flex-1 w-full h-full relative">
       <InfiniteViewer
         ref={infiniteViewerRef}
         useMouseDrag={editor.canvasState.mode === "move"}
@@ -156,14 +166,13 @@ function EditorCanvas({ editor }: { editor: EditorContextType }) {
         }}
       >
         <div
-          ref={canvasContainerRef}
           style={{
             height: editor.canvasState.size.height,
             width: editor.canvasState.size.width,
           }}
           className="editor-canvas relative shadow-normal"
         >
-          <div className="hovered" />
+          <div className="hovered" style={hoverOverlayStyle} />
           <div
             ref={editor.canvasRef}
             className="relative w-full h-full overflow-hidden"
@@ -223,6 +232,7 @@ function EditorCanvas({ editor }: { editor: EditorContextType }) {
             ables={[EditorDimensionViewable]}
             props={{
               dimensionViewable: true,
+              dimensionVisible,
             }}
             zoom={1 / editor.canvasState.zoom}
             rotationPosition="none"
@@ -270,8 +280,8 @@ function EditorCanvas({ editor }: { editor: EditorContextType }) {
               e.target.style.transform = e.transform;
             }}
             onDragStart={() => {
-              const hoverTarget = document.querySelector(".hovered") as any;
-              hoverTarget.style.display = null;
+              setIsDragging(true);
+              editor.setHoveredBlockId(null);
             }}
             onDragGroup={(e) => {
               e.events.forEach((ev) => {
@@ -281,70 +291,35 @@ function EditorCanvas({ editor }: { editor: EditorContextType }) {
             onClickGroup={(e) => {
               selectoRef.current!.clickTarget(e.inputEvent, e.inputTarget);
             }}
-            renderDirections={["nw", "n", "ne", "w", "e", "sw", "s", "se"]}
+            renderDirections={renderDirections}
             onResize={(e) => {
               const { height } = e;
               const { width } = e;
               e.target.style.width = `${width}px`;
               e.target.style.height = `${height}px`;
               e.target.style.transform = e.drag.transform;
-
-              const leftResizer = document.querySelector(
-                ".moveable-w.moveable-resizable"
-              ) as any;
-              const rightResizer = document.querySelector(
-                ".moveable-e.moveable-resizable"
-              ) as any;
-              const topResizer = document.querySelector(
-                ".moveable-n.moveable-resizable"
-              ) as any;
-              const bottomResizer = document.querySelector(
-                ".moveable-s.moveable-resizable"
-              ) as any;
-
-              if (height < 60 && leftResizer && rightResizer) {
-                leftResizer.style.display = "none";
-                rightResizer.style.display = "none";
-              } else {
-                leftResizer.style.display = null;
-                rightResizer.style.display = null;
-              }
-
-              if (width < 60 && topResizer && bottomResizer) {
-                topResizer.style.display = "none";
-                bottomResizer.style.display = "none";
-              } else {
-                topResizer.style.display = null;
-                bottomResizer.style.display = null;
-              }
             }}
             onResizeStart={() => {
-              // show size
-              const sizeElm = document.querySelector(".moveable-dimension");
-              sizeElm?.classList.add("visible");
+              editor.setHoveredBlockId(null);
+              setDimensionVisible(true);
+              setIsDragging(true);
             }}
             onDragEnd={(e) => {
               const target = e.target as HTMLElement;
               const { id } = target;
               const matrix = new DOMMatrixReadOnly(target.style.transform);
-              editor.updateBlockValues(id, {
-                x: Math.trunc(matrix.m41),
-                y: Math.trunc(matrix.m42),
+              editor.setBlockPosition(id, {
+                x: matrix.m41,
+                y: matrix.m42,
               });
+              setIsDragging(false);
             }}
             onResizeEnd={(e) => {
-              // hide size
-              const sizeElm = document.querySelector(".moveable-dimension");
-              sizeElm?.classList.remove("visible");
-
+              setDimensionVisible(false);
+              setIsDragging(false);
               const target = e.target as HTMLElement;
               const { id } = target;
-              const block = editor.blocks.find((b) => b.id === id);
-              if (block) {
-                block.width = parseFloat(target.style.width);
-                block.height = parseFloat(target.style.height);
-              }
-              editor.updateBlockValues(id, {
+              editor.setBlockSize(id, {
                 width: parseFloat(target.style.width),
                 height: parseFloat(target.style.height),
               });

@@ -1,26 +1,30 @@
+import * as React from "react";
+import type { HTMLAttributes } from "react";
 import type { IEditorBlockImage } from "../../editor-types";
 import type { EditorContextType } from "../../use-editor";
 import CommonBlock from "./common-block";
 
-function ImageBlock({
-  block,
-  editor,
-}: {
-  block: IEditorBlockImage;
-  editor: EditorContextType;
-}) {
+const ImageBlock = React.forwardRef<
+  HTMLDivElement,
+  {
+    block: IEditorBlockImage;
+    editor: EditorContextType;
+  } & HTMLAttributes<HTMLDivElement>
+>(({ block, editor, ...props }, ref) => {
   return (
-    <CommonBlock editor={editor} block={block}>
+    <CommonBlock ref={ref} editor={editor} block={block} {...props}>
       <img
         src={block.url}
         alt=""
-        className="w-full h-full"
+        className="h-full w-full"
         style={{
           objectFit: "contain",
         }}
       />
     </CommonBlock>
   );
-}
+});
+
+ImageBlock.displayName = "ImageBlock";
 
 export default ImageBlock;

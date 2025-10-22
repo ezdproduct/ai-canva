@@ -1,21 +1,29 @@
-import {
+import type {
   IEditorBlockText,
   ITextDecoration,
 } from "@/components/canvas/editor-types";
-import { EditorContextType } from "@/components/canvas/use-editor";
+import type { EditorContextType } from "@/components/canvas/use-editor";
 import ControllerRow from "../controller-row";
+
+interface TextDecorationControlProps {
+  editor: EditorContextType;
+  id: string;
+  block: IEditorBlockText | undefined;
+  className?: string;
+}
 
 function TextDecorationControl({
   editor,
   id,
   block,
-}: {
-  editor: EditorContextType;
-  id: string;
-  block: IEditorBlockText | undefined;
-}) {
+  className,
+}: TextDecorationControlProps) {
   return (
-    <ControllerRow label="Decoration">
+    <ControllerRow
+      label="Decoration"
+      className={className}
+      contentClassName="justify-between"
+    >
       <select
         name="textDecoration"
         id="textDecoration"
@@ -27,6 +35,7 @@ function TextDecorationControl({
             });
           }
         }}
+        className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
       >
         <option value="inherit">Default</option>
         <option value="overline">Overline</option>

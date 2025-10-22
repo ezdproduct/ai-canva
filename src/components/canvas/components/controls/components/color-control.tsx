@@ -1,3 +1,4 @@
+import * as React from "react";
 import { Cross2Icon } from "@radix-ui/react-icons";
 
 import {
@@ -5,82 +6,87 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useState } from "react";
 import ControllerRow from "./controller-row";
 import CustomColorPicker from "./color-picker";
+
+interface ColorControlProps {
+  name: string;
+  value: string | undefined;
+  onChange: (value: string | undefined) => void;
+  disableGradient?: boolean;
+  className?: string;
+}
 
 function ColorControl({
   name,
   onChange,
   value,
   disableGradient,
-}: {
-  name: string;
-  value: string | undefined;
-  onChange: (v: string | undefined) => void;
-  disableGradient?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
+  className,
+}: ColorControlProps) {
+  const [open, setOpen] = React.useState(false);
   const onClick = () => {
     if (!value) {
       onChange("#000000");
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const removeBorder = (e: any) => {
-    e.stopPropagation();
+  const handleClear = (event: React.MouseEvent<HTMLElement>) => {
+    event.stopPropagation();
     onChange(undefined);
     setOpen(false);
   };
 
   return (
-    <ControllerRow label={name}>
-      <Popover open={open} onOpenChange={(e) => setOpen(e)}>
+    <ControllerRow label={name} className={className}
+      contentClassName="justify-between">
+      <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <div
-            role="presentation"
+          <button
+            type="button"
             onClick={onClick}
-            onKeyDown={onClick}
-            className="h-7 rounded-md bg-gray w-full border border-border flex items-center justify-between px-1 cursor-pointer"
+            className="flex h-7 w-full items-center justify-between rounded-md border border-border bg-muted px-1 text-xs transition hover:border-primary"
           >
             <div className="flex items-center gap-2">
               <div
-                className="h-5 w-5 rounded-sm bg-foreground/20"
+                className="h-5 w-5 rounded-sm border border-border bg-foreground/20"
                 style={{
                   ...(value ? { background: value } : {}),
                 }}
               />
               {value ? (
-                <p className="text-xs max-w-[100px] overflow-hidden text-ellipsis whitespace-nowrap">
+                <p className="max-w-[100px] overflow-hidden text-ellipsis whitespace-nowrap">
                   {value?.includes("gradient") ? "Gradient" : value}
                 </p>
               ) : (
-                <p className="text-xs opacity-40">Add...</p>
+                <p className="opacity-50">Add...</p>
               )}
             </div>
             {value && (
-              <div
-                role="presentation"
-                className="p-1 -mr-1"
-                onClick={removeBorder}
-                onKeyDown={removeBorder}
+              <button
+                type="button"
+                className="-mr-1 rounded p-1 text-foreground/60 transition hover:bg-accent"
+                onClick={handleClear}
               >
-                <Cross2Icon className="opacity-50 h-3 w-3" />
-              </div>
+                <Cross2Icon className="h-3 w-3 opacity-50" />
+              </button>
             )}
-          </div>
+          </button>
         </PopoverTrigger>
-        <PopoverContent align="center" className="w-[293px]" side="left">
-          <div className="flex items-center justify-between border-b border-border pb-2 mb-4">
-            <p className="text-xs font-semibold">{name}</p>
-            <div
-              role="presentation"
-              className="p-1 -mr-1 cursor-pointer"
+        <PopoverContent
+          align="center"
+          className="w-[293px]"
+          side="left"
+        >
+          <div className="mb-4 flex items-center justify-between border-b border-border pb-2">
+            <p className="text-xs font-semibold capitalize">{name}</p>
+            <button
+              type="button"
+              className="-mr-1 rounded p-1 text-foreground/60 hover:bg-accent"
               onClick={() => setOpen(false)}
             >
-              <Cross2Icon className="h-3.5 w-3.5 opacity-50" />
-            </div>
+              <Cross2Icon className="h-3.5 w-3.5" />
+            </button>
           </div>
           <CustomColorPicker
             value={value}

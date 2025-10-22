@@ -1,15 +1,19 @@
+import * as React from "react";
+import type { HTMLAttributes } from "react";
 import type { IEditorBlockFrame } from "../../editor-types";
-import { EditorContextType } from "../../use-editor";
+import type { EditorContextType } from "../../use-editor";
 import CommonBlock from "./common-block";
 
-function FrameBlock({
-  editor,
-  block,
-}: {
-  block: IEditorBlockFrame;
-  editor: EditorContextType;
-}) {
-  return <CommonBlock block={block} editor={editor} />;
-}
+const FrameBlock = React.forwardRef<
+  HTMLDivElement,
+  {
+    block: IEditorBlockFrame;
+    editor: EditorContextType;
+  } & HTMLAttributes<HTMLDivElement>
+>(({ editor, block, ...props }, ref) => {
+  return <CommonBlock ref={ref} block={block} editor={editor} {...props} />;
+});
+
+FrameBlock.displayName = "FrameBlock";
 
 export default FrameBlock;

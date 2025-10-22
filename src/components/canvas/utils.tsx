@@ -1,6 +1,6 @@
 import { BoxIcon, ImageIcon, TextIcon } from "@radix-ui/react-icons";
 import { useEffect, useState } from "react";
-import {
+import type {
   IEditorBlocks,
   IEditorBlockText,
   IEditorBlockType,
@@ -20,7 +20,40 @@ export function BlockIcon(type: IEditorBlockType) {
   }
 }
 
+const loadedFontWeights = new Map<string, Set<string>>();
+
+const ensureFontStyleElement = () => {
+  if (typeof document === "undefined") {
+    return null;
+  }
+  const existing = document.getElementById(
+    "dynamic-font-loader"
+  ) as HTMLStyleElement | null;
+  if (existing) {
+    return existing;
+  }
+  const style = document.createElement("style");
+  style.id = "dynamic-font-loader";
+  document.head.appendChild(style);
+  return style;
+};
+
 export const loadFont = async (fontKey: string, weights: string[]) => {
+  if (!weights.length || typeof document === "undefined") {
+    return;
+  }
+
+  const uniqueRequestedWeights = Array.from(new Set(weights));
+  const cachedWeights =
+    loadedFontWeights.get(fontKey) ?? new Set<string>();
+  const weightsToLoad = uniqueRequestedWeights.filter(
+    (weight) => !cachedWeights.has(weight)
+  );
+
+  if (!weightsToLoad.length) {
+    return;
+  }
+
   try {
     const fontObject = await fontsList
       .find((font) => font.family === fontKey)
@@ -38,7 +71,7 @@ export const loadFont = async (fontKey: string, weights: string[]) => {
     const cssRules: string[] = [];
     const loadPromises: Promise<void>[] = [];
 
-    for (const weight of weights) {
+    for (const weight of weightsToLoad) {
       const fontFace = fontInfo.fonts?.normal?.[weight];
       if (!fontFace) {
         continue;
@@ -70,14 +103,26 @@ export const loadFont = async (fontKey: string, weights: string[]) => {
       `);
     }
 
-    // Wait for all fonts to load and add CSS
+    if (!loadPromises.length) {
+      return;
+    }
+
     await Promise.all(loadPromises);
     await document.fonts.ready;
 
-    // Add CSS to document
-    const fontCss = document.createElement("style");
-    fontCss.innerHTML = cssRules.join("\n");
-    document.head.appendChild(fontCss);
+    const styleElement = ensureFontStyleElement();
+    if (styleElement && cssRules.length) {
+      styleElement.textContent = [
+        styleElement.textContent ?? "",
+        cssRules.join("\n"),
+      ]
+        .filter(Boolean)
+        .join("\n");
+    }
+
+    const updatedWeights = cachedWeights;
+    weightsToLoad.forEach((weight) => updatedWeights.add(weight));
+    loadedFontWeights.set(fontKey, updatedWeights);
   } catch {
     // Handle error
   }
@@ -87,23 +132,18 @@ export const loadFonts = async (blocks: IEditorBlocks[]) => {
   const textBlocks = blocks.filter(
     (block) => block.type === "text"
   ) as IEditorBlockText[];
-  const fonts = textBlocks.map((block) => ({
-    font: block.font.family,
-    weights: block.font.weight,
-  }));
 
-  const uniqueFonts = Array.from(new Set(fonts.map((font) => font.font))).map(
-    (font) => ({
-      font,
-      weights: fonts
-        .filter((f) => f.font === font)
-        .map((f) => f.weights)
-        .flat(),
-    })
-  );
+  const fontWeightMap = new Map<string, Set<string>>();
 
-  for (const { font, weights } of uniqueFonts) {
-    await loadFont(font, weights);
+  textBlocks.forEach((block) => {
+    const weightSet =
+      fontWeightMap.get(block.font.family) ?? new Set<string>();
+    weightSet.add(block.font.weight);
+    fontWeightMap.set(block.font.family, weightSet);
+  });
+
+  for (const [font, weights] of fontWeightMap.entries()) {
+    await loadFont(font, Array.from(weights));
   }
 };
 

@@ -1,150 +1,151 @@
-import { IEditorBlocks } from "@/components/canvas/editor-types";
-import { EditorContextType } from "@/components/canvas/use-editor";
+import * as React from "react";
+import type { IEditorBlocks } from "@/components/canvas/editor-types";
+import type { EditorContextType } from "@/components/canvas/use-editor";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import { NumberInput } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useState } from "react";
 import ControllerRow from "./controller-row";
 import ColorControl from "./color-control";
 
-function ShadowControl({
-  editor,
-  id,
-  block,
-}: {
+interface ShadowControlProps {
   editor: EditorContextType;
   id: string;
   block: IEditorBlocks | undefined;
-}) {
-  const [open, setOpen] = useState(false);
-  const onClick = () => {
-    if (!block?.shadow) {
-      editor.updateBlockValues(id, {
-        shadow: {
-          type: "box",
-          position: "outside",
-          color: "#00000040",
-          x: 0,
-          y: 1,
-          blur: 5,
-          spread: 0,
-        },
-      });
-    }
-  };
+  className?: string;
+}
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const removeBorder = (e: any) => {
-    e.stopPropagation();
-    editor.updateBlockValues(id, {
-      shadow: undefined,
-    });
-    setOpen(false);
-  };
+const DEFAULT_SHADOW = {
+  type: "box" as const,
+  position: "outside" as const,
+  color: "#00000040",
+  x: 0,
+  y: 1,
+  blur: 5,
+  spread: 0,
+};
+
+function ShadowControl({ editor, id, block, className }: ShadowControlProps) {
+  const [open, setOpen] = React.useState(false);
+
+  const ensureShadow = React.useCallback(() => {
+    if (block?.shadow) {
+      return;
+    }
+    editor.updateBlockValues(id, { shadow: DEFAULT_SHADOW });
+  }, [block, editor, id]);
+
+  const handleClear = React.useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
+      editor.updateBlockValues(id, { shadow: undefined });
+      setOpen(false);
+    },
+    [editor, id]
+  );
 
   return (
-    <ControllerRow label="Shadow">
-      <Popover open={open} onOpenChange={(e) => setOpen(e)}>
+    <ControllerRow
+      label="Shadow"
+      className={className}
+      contentClassName="justify-between"
+    >
+      <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <div
-            role="presentation"
-            onClick={onClick}
-            onKeyDown={onClick}
-            className="h-7 rounded-md bg-gray w-full border border-border flex items-center justify-between px-1 cursor-pointer"
+          <button
+            type="button"
+            className="flex h-7 w-full items-center justify-between rounded-md border border-border bg-muted px-1 text-xs transition hover:border-primary"
+            onClick={ensureShadow}
           >
-            <div className="flex items-center gap-2">
-              <div
-                className="h-5 w-5 rounded-sm bg-foreground/20"
+            <span className="flex items-center gap-2">
+              <span
+                className="h-5 w-5 rounded-sm border border-border bg-foreground/20"
                 style={{
                   ...(block?.shadow?.color
-                    ? { background: block?.shadow?.color }
+                    ? { background: block.shadow.color }
                     : {}),
                 }}
               />
               {block?.shadow ? (
-                <p className="text-xs capitalize">{block.shadow.color}</p>
+                <span className="max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap">
+                  {block.shadow.color}
+                </span>
               ) : (
-                <p className="text-xs opacity-40">Add...</p>
+                <span className="opacity-50">Add…</span>
               )}
-            </div>
-            {block?.shadow && (
-              <div
-                role="presentation"
-                className="p-1 -mr-1"
-                onClick={removeBorder}
-                onKeyDown={removeBorder}
+            </span>
+            {block?.shadow ? (
+              <button
+                type="button"
+                className="rounded p-1 text-foreground/60 hover:bg-accent"
+                onClick={handleClear}
               >
-                <Cross2Icon className="opacity-50 h-3 w-3" />
-              </div>
-            )}
-          </div>
+                <Cross2Icon className="h-3 w-3" />
+              </button>
+            ) : null}
+          </button>
         </PopoverTrigger>
         <PopoverContent align="center" side="left">
-          <div className="flex items-center justify-between border-b border-border pb-2 mb-4">
+          <div className="mb-4 flex items-center justify-between border-b border-border pb-2">
             <p className="text-xs font-semibold">Shadow</p>
-            <div
-              role="presentation"
-              className="p-1 -mr-1 cursor-pointer"
+            <button
+              type="button"
+              className="rounded p-1 text-foreground/60 hover:bg-accent"
               onClick={() => setOpen(false)}
             >
-              <Cross2Icon className="h-3.5 w-3.5 opacity-50" />
-            </div>
+              <Cross2Icon className="h-3.5 w-3.5" />
+            </button>
           </div>
           <div className="flex flex-col gap-2.5">
-            <ControllerRow label="Type">
+            <ControllerRow label="Type" contentClassName="justify-between">
               <Tabs
                 value={block?.shadow?.type}
                 className="w-full"
-                onValueChange={(e) => {
-                  if (block) {
-                    editor.updateBlockValues(id, {
-                      shadow: {
-                        ...block.shadow,
-                        type: e as "box" | "realistic",
-                      },
-                    });
+                onValueChange={(value) => {
+                  if (!block) {
+                    return;
                   }
+                  editor.updateBlockValues(id, {
+                    shadow: {
+                      ...block.shadow,
+                      type: value as "box" | "realistic",
+                    },
+                  });
                 }}
               >
                 <TabsList>
-                  <TabsTrigger value="box">
-                    <p className="text-xs">Box</p>
-                  </TabsTrigger>
-                  <TabsTrigger value="realistic">
-                    <p className="text-xs">Realistic</p>
-                  </TabsTrigger>
+                  <TabsTrigger value="box">Box</TabsTrigger>
+                  <TabsTrigger value="realistic">Realistic</TabsTrigger>
                 </TabsList>
               </Tabs>
             </ControllerRow>
             {block?.shadow?.type !== "realistic" && (
-              <ControllerRow label="Position">
+              <ControllerRow
+                label="Position"
+                contentClassName="justify-between"
+              >
                 <Tabs
                   value={block?.shadow?.position}
                   className="w-full"
-                  onValueChange={(e) => {
-                    if (block) {
-                      editor.updateBlockValues(id, {
-                        shadow: {
-                          ...block.shadow,
-                          position: e as "inside" | "outside",
-                        },
-                      });
+                  onValueChange={(value) => {
+                    if (!block) {
+                      return;
                     }
+                    editor.updateBlockValues(id, {
+                      shadow: {
+                        ...block.shadow,
+                        position: value as "inside" | "outside",
+                      },
+                    });
                   }}
                 >
                   <TabsList>
-                    <TabsTrigger value="inside">
-                      <p className="text-xs">Inside</p>
-                    </TabsTrigger>
-                    <TabsTrigger value="outside">
-                      <p className="text-xs">Outside</p>
-                    </TabsTrigger>
+                    <TabsTrigger value="inside">Inside</TabsTrigger>
+                    <TabsTrigger value="outside">Outside</TabsTrigger>
                   </TabsList>
                 </Tabs>
               </ControllerRow>
@@ -153,75 +154,80 @@ function ShadowControl({
               name="Color"
               value={block?.shadow?.color}
               disableGradient
-              onChange={(e) => {
-                if (block) {
+              onChange={(color) => {
+                if (!block) {
+                  return;
+                }
+                editor.updateBlockValues(id, {
+                  shadow: {
+                    ...block.shadow,
+                    color,
+                  },
+                });
+              }}
+            />
+            <ControllerRow label="X" contentClassName="justify-end">
+              <NumberInput
+                value={block?.shadow?.x}
+                onChange={(value) => {
+                  if (!block) {
+                    return;
+                  }
                   editor.updateBlockValues(id, {
                     shadow: {
                       ...block.shadow,
-                      color: e,
+                      x: value,
                     },
                   });
-                }
-              }}
-            />
-            <ControllerRow label="X">
-              <NumberInput
-                value={block?.shadow?.x}
-                onChange={(e) => {
-                  if (block) {
-                    editor.updateBlockValues(id, {
-                      shadow: {
-                        ...block.shadow,
-                        x: e,
-                      },
-                    });
-                  }
                 }}
               />
             </ControllerRow>
-            <ControllerRow label="Y">
+            <ControllerRow label="Y" contentClassName="justify-end">
               <NumberInput
                 value={block?.shadow?.y}
-                onChange={(e) => {
-                  if (block) {
-                    editor.updateBlockValues(id, {
-                      shadow: {
-                        ...block.shadow,
-                        y: e,
-                      },
-                    });
+                onChange={(value) => {
+                  if (!block) {
+                    return;
                   }
+                  editor.updateBlockValues(id, {
+                    shadow: {
+                      ...block.shadow,
+                      y: value,
+                    },
+                  });
                 }}
               />
             </ControllerRow>
-            <ControllerRow label="Blur">
+            <ControllerRow label="Blur" contentClassName="justify-end">
               <NumberInput
                 value={block?.shadow?.blur}
-                onChange={(e) => {
-                  if (block) {
-                    editor.updateBlockValues(id, {
-                      shadow: {
-                        ...block.shadow,
-                        blur: e,
-                      },
-                    });
+                onChange={(value) => {
+                  if (!block) {
+                    return;
                   }
+                  editor.updateBlockValues(id, {
+                    shadow: {
+                      ...block.shadow,
+                      blur: value,
+                    },
+                  });
                 }}
               />
             </ControllerRow>
             {block?.shadow?.type !== "realistic" && (
-              <ControllerRow label="Spread">
+              <ControllerRow label="Spread" contentClassName="justify-end">
                 <NumberInput
                   value={block?.shadow?.spread}
-                  onChange={(e) => {
-                    if (block) {
-                      editor.updateBlockValues(id, {
-                        shadow: {
-                          ...block.shadow,
-                          spread: e,
-                        },
-                      });
+                  onChange={(value) => {
+                    if (!block) {
+                      return;
                     }
+                    editor.updateBlockValues(id, {
+                      shadow: {
+                        ...block.shadow,
+                        spread: value,
+                      },
+                    });
                   }}
                 />
               </ControllerRow>

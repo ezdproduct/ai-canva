@@ -1,18 +1,30 @@
+import * as React from "react";
 import { CursorArrowIcon, HandIcon } from "@radix-ui/react-icons";
-
-import ButtonsGroup from "@/components/ui/buttons-group";
-import { useRef } from "react";
 import { FiDownload } from "react-icons/fi";
-import { Button } from "@/components/ui/button";
 import { GrUndo, GrRedo } from "react-icons/gr";
+import ButtonsGroup from "@/components/ui/buttons-group";
+import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
-import { EditorContextType } from "../use-editor";
+import type { EditorContextType } from "../use-editor";
 import { BlockIcon } from "../utils";
+import { cn } from "@/lib/utils";
 
-function EditorHeader({ editor }: { editor: EditorContextType }) {
-  const imageInputRef = useRef<HTMLInputElement>(null);
+interface EditorHeaderProps {
+  editor: EditorContextType;
+  className?: string;
+}
+
+function EditorHeader({ editor, className }: EditorHeaderProps) {
+  const imageInputRef = React.useRef<HTMLInputElement>(null);
   return (
-    <div className="h-[60px] border-b border-border flex items-center justify-between px-4 z-20 relative bg-background">
+    <div
+      className={
+        cn(
+          "relative z-20 flex h-[60px] items-center justify-between border-b border-border bg-background px-4",
+          className
+        )
+      }
+    >
       <div className="flex items-center gap-4">
         <ButtonsGroup
           buttons={[

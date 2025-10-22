@@ -1,24 +1,29 @@
-import { IEditorBlockText } from "@/components/canvas/editor-types";
-import { EditorContextType } from "@/components/canvas/use-editor";
+import type { IEditorBlockText } from "@/components/canvas/editor-types";
+import type { EditorContextType } from "@/components/canvas/use-editor";
 import { Input } from "@/components/ui/input";
 import ControllerRow from "../controller-row";
+
+interface ContentControlProps {
+  editor: EditorContextType;
+  id: string;
+  block: IEditorBlockText | undefined;
+  className?: string;
+}
 
 function ContentControl({
   editor,
   id,
   block,
-}: {
-  editor: EditorContextType;
-  id: string;
-  block: IEditorBlockText | undefined;
-}) {
+  className,
+}: ContentControlProps) {
   return (
-    <ControllerRow label="Content">
+    <ControllerRow label="Content" className={className}
+      contentClassName="gap-3">
       <Input
         value={block?.text}
         onChange={(e) => {
           if (block) {
-            const el = document.querySelector(`.block-${block.id}`) as Element;
+            const el = editor.getBlockElement(block.id);
             if (el && el?.scrollHeight > el?.clientHeight) {
               editor.updateBlockValues(block.id, {
                 text: e.target.value,
@@ -34,9 +39,7 @@ function ContentControl({
         onPaste={() => {
           if (block) {
             setTimeout(() => {
-              const el = document.querySelector(
-                `.block-${block.id}`
-              ) as Element;
+              const el = editor.getBlockElement(block.id);
               if (el && el?.scrollHeight > el?.clientHeight) {
                 editor.updateBlockValues(block.id, {
                   height: (el?.scrollHeight || block.height) + 2,

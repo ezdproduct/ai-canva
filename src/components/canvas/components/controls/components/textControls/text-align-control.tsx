@@ -1,5 +1,5 @@
-import { IEditorBlockText, ITextAlign } from "@/components/canvas/editor-types";
-import { EditorContextType } from "@/components/canvas/use-editor";
+import type { IEditorBlockText, ITextAlign } from "@/components/canvas/editor-types";
+import type { EditorContextType } from "@/components/canvas/use-editor";
 import {
   TextAlignLeftIcon,
   TextAlignCenterIcon,
@@ -9,17 +9,21 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ControllerRow from "../controller-row";
 
+interface TextAlignControlProps {
+  editor: EditorContextType;
+  id: string;
+  block: IEditorBlockText | undefined;
+  className?: string;
+}
+
 function TextAlignControl({
   editor,
   id,
   block,
-}: {
-  editor: EditorContextType;
-  id: string;
-  block: IEditorBlockText | undefined;
-}) {
+  className,
+}: TextAlignControlProps) {
   return (
-    <ControllerRow label="Align">
+    <ControllerRow label="Align" className={className} contentClassName="justify-between">
       <Tabs
         value={block?.textAlign}
         className="w-full"

@@ -1,135 +1,151 @@
-import { IBorderType, IEditorBlocks } from "@/components/canvas/editor-types";
-import { EditorContextType } from "@/components/canvas/use-editor";
+import * as React from "react";
+import type { IBorderType, IEditorBlocks } from "@/components/canvas/editor-types";
+import type { EditorContextType } from "@/components/canvas/use-editor";
 import { BoxIcon, Cross2Icon } from "@radix-ui/react-icons";
 import { NumberInput } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TbBorderSides } from "react-icons/tb";
-
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useState } from "react";
 import ControllerRow from "./controller-row";
 import ColorControl from "./color-control";
 
-function BorderControl({
-  editor,
-  id,
-  block,
-}: {
+interface BorderControlProps {
   editor: EditorContextType;
   id: string;
   block: IEditorBlocks | undefined;
-}) {
-  const [open, setOpen] = useState(false);
-  const onClick = () => {
-    if (!block?.border) {
-      editor.updateBlockValues(id, {
-        border: {
-          width: {
-            type: "all",
-            left: 1,
-            right: 1,
-            top: 1,
-            bottom: 1,
-          },
-          type: "solid",
-          color: "#000000",
-        },
-      });
-    }
-  };
+  className?: string;
+}
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const removeBorder = (e: any) => {
-    e.stopPropagation();
-    editor.updateBlockValues(id, {
-      border: undefined,
-    });
-    setOpen(false);
-  };
+const DEFAULT_BORDER_WIDTH = 1;
+
+const ensureBorder = (
+  block: IEditorBlocks | undefined,
+  editor: EditorContextType,
+  id: string
+) => {
+  if (block?.border) {
+    return;
+  }
+  editor.updateBlockValues(id, {
+    border: {
+      width: {
+        type: "all",
+        left: DEFAULT_BORDER_WIDTH,
+        right: DEFAULT_BORDER_WIDTH,
+        top: DEFAULT_BORDER_WIDTH,
+        bottom: DEFAULT_BORDER_WIDTH,
+      },
+      type: "solid",
+      color: "#000000",
+    },
+  });
+};
+
+function BorderControl({ editor, id, block, className }: BorderControlProps) {
+  const [open, setOpen] = React.useState(false);
+
+  const handleToggle = React.useCallback(() => {
+    ensureBorder(block, editor, id);
+  }, [block, editor, id]);
+
+  const handleClear = React.useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
+      editor.updateBlockValues(id, { border: undefined });
+      setOpen(false);
+    },
+    [editor, id]
+  );
 
   return (
-    <ControllerRow label="Border">
-      <Popover open={open} onOpenChange={(e) => setOpen(e)}>
+    <ControllerRow
+      label="Border"
+      className={className}
+      contentClassName="justify-between"
+    >
+      <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <div
-            role="presentation"
-            onClick={onClick}
-            onKeyDown={onClick}
-            className="h-7 rounded-md bg-gray w-full border border-border flex items-center justify-between px-1 cursor-pointer"
+          <button
+            type="button"
+            onClick={handleToggle}
+            className="flex h-7 w-full items-center justify-between rounded-md border border-border bg-muted px-1 text-xs transition hover:border-primary"
           >
-            <div className="flex items-center gap-2">
-              <div
-                className="h-5 w-5 rounded-sm bg-foreground/20"
-                style={{
-                  ...(block?.border?.color
-                    ? { background: block?.border?.color }
-                    : {}),
-                }}
+            <span className="flex items-center gap-2">
+              <span
+                className="h-5 w-5 rounded-sm border border-border bg-foreground/20"
+                style={
+                  block?.border?.color
+                    ? { background: block.border.color }
+                    : undefined
+                }
               />
               {block?.border ? (
-                <p className="text-xs capitalize">{block.border.type}</p>
+                <span className="max-w-[100px] overflow-hidden text-ellipsis whitespace-nowrap capitalize">
+                  {block.border.type}
+                </span>
               ) : (
-                <p className="text-xs opacity-40">Add...</p>
+                <span className="opacity-50">Add…</span>
               )}
-            </div>
-            {block?.border && (
-              <div
-                role="presentation"
-                className="p-1 -mr-1"
-                onClick={removeBorder}
-                onKeyDown={removeBorder}
+            </span>
+            {block?.border ? (
+              <button
+                type="button"
+                className="rounded p-1 text-foreground/60 hover:bg-accent"
+                onClick={handleClear}
               >
-                <Cross2Icon className="opacity-50 h-3 w-3" />
-              </div>
-            )}
-          </div>
+                <Cross2Icon className="h-3 w-3" />
+              </button>
+            ) : null}
+          </button>
         </PopoverTrigger>
         <PopoverContent align="center" side="left">
-          <div className="flex items-center justify-between border-b border-border pb-2 mb-4">
+          <div className="mb-4 flex items-center justify-between border-b border-border pb-2">
             <p className="text-xs font-semibold">Border</p>
-            <div
-              role="presentation"
-              className="p-1 -mr-1 cursor-pointer"
+            <button
+              type="button"
+              className="rounded p-1 text-foreground/60 hover:bg-accent"
               onClick={() => setOpen(false)}
             >
-              <Cross2Icon className="h-3.5 w-3.5 opacity-50" />
-            </div>
+              <Cross2Icon className="h-3.5 w-3.5" />
+            </button>
           </div>
           <div className="flex flex-col gap-2.5">
             <ColorControl
               name="Color"
               value={block?.border?.color}
               disableGradient
-              onChange={(e) => {
-                if (block) {
-                  editor.updateBlockValues(id, {
-                    border: {
-                      ...block.border,
-                      color: e,
-                    },
-                  });
+              onChange={(color) => {
+                if (!block) {
+                  return;
                 }
+                editor.updateBlockValues(id, {
+                  border: {
+                    ...block.border,
+                    color,
+                  },
+                });
               }}
             />
             <ControllerRow label="Style">
               <select
                 name="type"
-                id="type"
                 value={block?.border?.type}
-                onChange={(e) => {
-                  if (block) {
-                    editor.updateBlockValues(id, {
-                      border: {
-                        ...block.border,
-                        type: e.target.value as IBorderType,
-                      },
-                    });
+                onChange={(event) => {
+                  if (!block) {
+                    return;
                   }
+                  editor.updateBlockValues(id, {
+                    border: {
+                      ...block.border,
+                      type: event.target.value as IBorderType,
+                    },
+                  });
                 }}
+                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
               >
                 <option value="solid">Solid</option>
                 <option value="dotted">Dotted</option>
@@ -141,46 +157,49 @@ function BorderControl({
                 <option value="outset">Outset</option>
               </select>
             </ControllerRow>
-            <ControllerRow label="Width">
+            <ControllerRow label="Width" contentClassName="items-stretch gap-2">
               <NumberInput
                 value={
                   block?.border?.width?.type === "all"
                     ? block?.border?.width.top
                     : parseFloat("")
                 }
-                onChange={(e) => {
-                  if (block) {
-                    editor.updateBlockValues(id, {
-                      border: {
-                        ...block.border,
-                        width: {
-                          type: "all",
-                          top: e,
-                          right: e,
-                          bottom: e,
-                          left: e,
-                        },
-                      },
-                    });
+                onChange={(value) => {
+                  if (!block) {
+                    return;
                   }
+                  editor.updateBlockValues(id, {
+                    border: {
+                      ...block.border,
+                      width: {
+                        type: "all",
+                        top: value,
+                        right: value,
+                        bottom: value,
+                        left: value,
+                      },
+                    },
+                  });
                 }}
+                className="w-20"
                 min={0}
               />
               <Tabs
                 value={block?.border?.width?.type}
                 className="w-[140px]"
-                onValueChange={(e) => {
-                  if (block) {
-                    editor.updateBlockValues(id, {
-                      border: {
-                        ...block.border,
-                        width: {
-                          ...block.border?.width,
-                          type: e as "all" | "single",
-                        },
-                      },
-                    });
+                onValueChange={(value) => {
+                  if (!block) {
+                    return;
                   }
+                  editor.updateBlockValues(id, {
+                    border: {
+                      ...block.border,
+                      width: {
+                        ...block.border?.width,
+                        type: value as "all" | "single",
+                      },
+                    },
+                  });
                 }}
               >
                 <TabsList>
@@ -194,87 +213,91 @@ function BorderControl({
               </Tabs>
             </ControllerRow>
             {block?.border?.width?.type === "single" && (
-              <ControllerRow>
+              <ControllerRow contentClassName="grid gap-2">
                 <div>
                   <div className="flex">
-                    <NumberInput
-                      className="rounded-tr-none rounded-br-none"
-                      value={block?.border.width.top}
-                      onChange={(e) => {
-                        if (block) {
-                          editor.updateBlockValues(id, {
-                            border: {
-                              ...block.border,
-                              width: {
-                                ...block.border?.width,
-                                top: e,
-                              },
+            <NumberInput
+              className="rounded-tr-none rounded-br-none"
+              value={block?.border?.width?.left}
+              onChange={(value) => {
+                if (!block || !block.border) {
+                  return;
+                }
+                editor.updateBlockValues(id, {
+                  border: {
+                    ...block.border,
+                    width: {
+                      ...block.border.width,
+                      left: value,
+                    },
+                  },
+                });
+              }}
+              min={0}
+            />
+            <NumberInput
+              className="rounded-none"
+              value={block?.border?.width?.top}
+              onChange={(value) => {
+                if (!block || !block.border) {
+                  return;
+                }
+                editor.updateBlockValues(id, {
+                  border: {
+                    ...block.border,
+                            width: {
+                              ...block.border.width,
+                              top: value,
                             },
-                          });
-                        }
+                          },
+                        });
                       }}
                       min={0}
-                    />
-                    <NumberInput
-                      className="rounded-l-none rounded-r-none"
-                      value={block?.border.width.right}
-                      onChange={(e) => {
-                        if (block) {
-                          editor.updateBlockValues(id, {
-                            border: {
-                              ...block.border,
-                              width: {
-                                ...block.border?.width,
-                                right: e,
-                              },
+            />
+            <NumberInput
+              className="rounded-none"
+              value={block?.border?.width?.right}
+              onChange={(value) => {
+                if (!block || !block.border) {
+                  return;
+                }
+                editor.updateBlockValues(id, {
+                  border: {
+                    ...block.border,
+                            width: {
+                              ...block.border.width,
+                              right: value,
                             },
-                          });
-                        }
+                          },
+                        });
                       }}
                       min={0}
-                    />
-                    <NumberInput
-                      className="rounded-l-none rounded-r-none"
-                      value={block?.border.width.bottom}
-                      onChange={(e) => {
-                        if (block) {
-                          editor.updateBlockValues(id, {
-                            border: {
-                              ...block.border,
-                              width: {
-                                ...block.border?.width,
-                                bottom: e,
-                              },
+            />
+            <NumberInput
+              className="rounded-tl-none rounded-bl-none"
+              value={block?.border?.width?.bottom}
+              onChange={(value) => {
+                if (!block || !block.border) {
+                  return;
+                }
+                editor.updateBlockValues(id, {
+                  border: {
+                    ...block.border,
+                            width: {
+                              ...block.border.width,
+                              bottom: value,
                             },
-                          });
-                        }
-                      }}
-                      min={0}
-                    />
-                    <NumberInput
-                      className="rounded-tl-none rounded-bl-none"
-                      value={block?.border.width.left}
-                      onChange={(e) => {
-                        if (block) {
-                          editor.updateBlockValues(id, {
-                            border: {
-                              ...block.border,
-                              width: {
-                                ...block.border?.width,
-                                left: e,
-                              },
-                            },
-                          });
-                        }
+                          },
+                        });
                       }}
                       min={0}
                     />
                   </div>
-                  <div className="pt-1 flex justify-between *:flex-1 *:text-[9px] *:text-center *:text-foreground/40">
-                    <span>T</span>
-                    <span>R</span>
-                    <span>B</span>
-                    <span>L</span>
+                  <div className="flex justify-between pt-1 text-[9px] text-foreground/40">
+                    <span>Left</span>
+                    <span>Top</span>
+                    <span>Right</span>
+                    <span>Bottom</span>
                   </div>
                 </div>
               </ControllerRow>

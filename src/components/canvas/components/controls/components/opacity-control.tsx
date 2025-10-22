@@ -1,19 +1,18 @@
-import { IEditorBlocks } from "@/components/canvas/editor-types";
-import { EditorContextType } from "@/components/canvas/use-editor";
+import type { IEditorBlocks } from "@/components/canvas/editor-types";
+import type { EditorContextType } from "@/components/canvas/use-editor";
 import { NumberInput } from "@/components/ui/input";
 import ControllerRow from "./controller-row";
 
-function OpacityControl({
-  editor,
-  id,
-  block,
-}: {
+interface OpacityControlProps {
   editor: EditorContextType;
   id: string;
   block: IEditorBlocks | undefined;
-}) {
+  className?: string;
+}
+
+function OpacityControl({ editor, id, block, className }: OpacityControlProps) {
   return (
-    <ControllerRow label="Opacity">
+    <ControllerRow label="Opacity" className={className} contentClassName="gap-3">
       <NumberInput
         min={0}
         max={100}
@@ -28,13 +27,14 @@ function OpacityControl({
       />
       <input
         type="range"
-        value={block?.opacity}
+        className="h-1 w-full cursor-pointer"
+        value={block?.opacity ?? 0}
         max={100}
         min={0}
-        onChange={(e) => {
+        onChange={(event) => {
           if (block) {
             editor.updateBlockValues(id, {
-              opacity: parseInt(e.target.value, 10),
+              opacity: Number.parseInt(event.target.value, 10),
             });
           }
         }}

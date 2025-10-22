@@ -1,4 +1,5 @@
-import { MoveableManagerInterface } from "react-moveable/declaration/types";
+import type { MoveableManagerInterface } from "react-moveable/declaration/types";
+import { cn } from "@/lib/utils";
 
 export const EditorDimensionViewable = {
   name: "dimensionViewable",
@@ -6,10 +7,14 @@ export const EditorDimensionViewable = {
   events: [],
   render(moveable: MoveableManagerInterface<unknown, unknown>) {
     const rect = moveable.getRect();
+    const isVisible = Boolean(
+      // @ts-ignore - custom prop injected via Moveable props
+      moveable.props.dimensionVisible
+    );
     return (
       <div
         key="dimension-viewer"
-        className="moveable-dimension"
+        className={cn("moveable-dimension", { visible: isVisible })}
         style={{
           left: `${rect.width / 2}px`,
           top: `${rect.height + 20}px`,

@@ -1,15 +1,20 @@
 import { NumberInput } from "@/components/ui/input";
-import { EditorContextType } from "../../use-editor";
+import type { EditorContextType } from "../../use-editor";
 import ControllerBox from "./components/controller-box";
 import ColorControl from "./components/color-control";
 import ControllerRow from "./components/controller-row";
 
-function CanvasController({ editor }: { editor: EditorContextType }) {
+interface CanvasControllerProps {
+  editor: EditorContextType;
+  className?: string;
+}
+
+function CanvasController({ editor, className }: CanvasControllerProps) {
   return (
-    <ControllerBox label="Canvas">
-      <ControllerRow label="Size">
+    <ControllerBox title="Canvas" className={className}>
+      <ControllerRow label="Size" contentClassName="gap-3">
         <NumberInput
-          leftChild={<p className="text-xs text-foreground/40">W</p>}
+          leftChild={<span className="text-xs text-muted-foreground">W</span>}
           value={editor.canvasState.size.width}
           onChange={(e) => {
             if (!Number.isNaN(e)) {
@@ -25,7 +30,7 @@ function CanvasController({ editor }: { editor: EditorContextType }) {
           min={2}
         />
         <NumberInput
-          leftChild={<p className="text-xs text-foreground/40">H</p>}
+          leftChild={<span className="text-xs text-muted-foreground">H</span>}
           value={editor.canvasState.size.height}
           onChange={(e) => {
             if (!Number.isNaN(e)) {
@@ -50,6 +55,7 @@ function CanvasController({ editor }: { editor: EditorContextType }) {
             background: e,
           });
         }}
+        className="justify-between"
       />
     </ControllerBox>
   );

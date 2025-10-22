@@ -1,21 +1,129 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react/no-danger */
-import { useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ClipboardEventHandler,
+  type HTMLAttributes,
+} from "react";
 import type { IEditorBlockText } from "../../editor-types";
 import type { EditorContextType } from "../../use-editor";
 import CommonBlock from "./common-block";
 
+const placeCaretAtEnd = (element: HTMLElement) => {
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  range.collapse(false);
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+};
+
 function TextBlock({
   block,
   editor,
+  ...props
 }: {
   block: IEditorBlockText;
   editor: EditorContextType;
-}) {
-  const ref = useRef<HTMLInputElement | null>(null);
+} & HTMLAttributes<HTMLDivElement>) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [draftHtml, setDraftHtml] = useState(block.text);
+
+  useEffect(() => {
+    if (isEditing) {
+      return;
+    }
+    setDraftHtml(block.text);
+    if (ref.current && ref.current.innerHTML !== block.text) {
+      ref.current.innerHTML = block.text;
+    }
+  }, [block.text, isEditing]);
+
+  const maybeGrowHeight = useCallback(() => {
+    const element = ref.current;
+    if (!element) {
+      return;
+    }
+    if (element.scrollHeight > element.clientHeight) {
+      editor.setBlockSize(block.id, { height: element.scrollHeight + 2 });
+    }
+  }, [block.id, editor]);
+
+  const finishEditing = useCallback(
+    (nextHtml: string) => {
+      setIsEditing(false);
+      editor.setCanvasState({
+        ...editor.canvasState,
+        isTextEditing: false,
+      });
+      if (nextHtml !== block.text) {
+        editor.updateBlockValues(block.id, {
+          text: nextHtml,
+        });
+      }
+    },
+    [block.id, block.text, editor]
+  );
+
+  const handleDoubleClick = useCallback(() => {
+    if (isEditing) {
+      return;
+    }
+    const currentHtml = ref.current?.innerHTML ?? block.text;
+    setDraftHtml(currentHtml);
+    setIsEditing(true);
+    editor.setCanvasState({
+      ...editor.canvasState,
+      isTextEditing: true,
+    });
+    requestAnimationFrame(() => {
+      const element = ref.current;
+      if (!element) {
+        return;
+      }
+      if (element.innerHTML !== currentHtml) {
+        element.innerHTML = currentHtml;
+      }
+      placeCaretAtEnd(element);
+      element.focus();
+    });
+  }, [block.text, editor, isEditing]);
+
+  const handleInput = useCallback(() => {
+    const element = ref.current;
+    if (!element) {
+      return;
+    }
+    setDraftHtml(element.innerHTML);
+    requestAnimationFrame(maybeGrowHeight);
+  }, [maybeGrowHeight]);
+
+  const handlePaste: ClipboardEventHandler<HTMLDivElement> = useCallback(
+    (event) => {
+      event.preventDefault();
+      const text = event.clipboardData.getData("text/plain");
+      const selection = window.getSelection();
+      if (!selection?.rangeCount) {
+        return;
+      }
+      selection.deleteFromDocument();
+      const range = selection.getRangeAt(0);
+      range.insertNode(document.createTextNode(text));
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      handleInput();
+    },
+    [handleInput]
+  );
+
   return (
     <CommonBlock
-      styles={{
+      ref={ref}
+      style={{
         wordWrap: "break-word",
         color: block.color,
         fontFamily: `${block.font.family}, san-serif`,
@@ -36,53 +144,17 @@ function TextBlock({
           : {}),
       }}
       editor={editor}
-      customRef={ref}
-      contentEditable={false}
-      onDoubleClick={() => {
-        if (
-          !ref.current?.getAttribute("contentEditable") ||
-          ref.current?.getAttribute("contentEditable") === "false"
-        ) {
-          ref.current?.setAttribute("contentEditable", "true");
-          editor.setCanvasState({
-            ...editor.canvasState,
-            isTextEditing: true,
-          });
-          ref.current?.focus();
-          const range = document.createRange();
-          range.selectNodeContents(ref?.current as any);
-          range.collapse(false);
-
-          const selection = window.getSelection();
-          selection?.removeAllRanges();
-          selection?.addRange(range);
-        }
-      }}
-      onBlur={() => {
-        ref.current?.setAttribute("contentEditable", "false");
-        editor.setCanvasState({
-          ...editor.canvasState,
-          isTextEditing: false,
-        });
-        editor.updateBlockValues(block.id, {
-          text: ref.current?.innerHTML,
-        });
-      }}
-      onInput={() => {
-        const el = ref?.current as any;
-        if (el?.scrollHeight > el?.clientHeight) {
-          editor.updateBlockValues(block.id, {
-            height: (el?.scrollHeight || block.height) + 2,
-          });
-        }
-      }}
-      dangerouslySetInnerHTML={{ __html: block.text }}
+      contentEditable={isEditing}
+      suppressContentEditableWarning
+      {...props}
+      onDoubleClick={handleDoubleClick}
+      onBlur={() => finishEditing(ref.current?.innerHTML ?? draftHtml)}
+      onInput={handleInput}
+      onPaste={handlePaste}
+      dangerouslySetInnerHTML={
+        isEditing ? undefined : { __html: block.text }
+      }
       block={block}
-      onPaste={(e) => {
-        e.preventDefault();
-        const text = e.clipboardData.getData("text/plain");
-        document.execCommand("insertText", false, text);
-      }}
     />
   );
 }

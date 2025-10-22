@@ -1,20 +1,24 @@
-import { IEditorBlockText } from "@/components/canvas/editor-types";
-import { EditorContextType } from "@/components/canvas/use-editor";
+import type { IEditorBlockText } from "@/components/canvas/editor-types";
+import type { EditorContextType } from "@/components/canvas/use-editor";
 import { NumberInput } from "@/components/ui/input";
 import ControllerRow from "../controller-row";
+
+interface LetterSpacingControlProps {
+  editor: EditorContextType;
+  id: string;
+  block: IEditorBlockText | undefined;
+  className?: string;
+}
 
 function LetterSpacingControl({
   editor,
   id,
   block,
-}: {
-  editor: EditorContextType;
-  id: string;
-  block: IEditorBlockText | undefined;
-}) {
+  className,
+}: LetterSpacingControlProps) {
   const onChange = (v: number) => {
     if (block) {
-      const el = document.querySelector(`.block-${block.id}`) as Element;
+      const el = editor.getBlockElement(block.id);
       if (el && el?.scrollHeight > el?.clientHeight) {
         editor.updateBlockValues(block.id, {
           letterSpacing: v,
@@ -28,7 +32,7 @@ function LetterSpacingControl({
     }
   };
   return (
-    <ControllerRow label="Spacing">
+    <ControllerRow label="Spacing" className={className} contentClassName="gap-3">
       <NumberInput
         min={-5}
         max={200}
@@ -37,6 +41,7 @@ function LetterSpacingControl({
       />
       <input
         type="range"
+        className="h-1 w-full cursor-pointer"
         value={block?.letterSpacing}
         max={50}
         min={0}

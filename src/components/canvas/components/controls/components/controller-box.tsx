@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import {
   Accordion,
   AccordionContent,
@@ -8,28 +8,62 @@ import {
 import { cn } from "@/lib/utils";
 
 interface ControllerBoxProps {
-  label: string;
+  title: string;
   children: React.ReactNode;
+  defaultOpen?: boolean;
   borderTop?: boolean;
+  className?: string;
+  itemClassName?: string;
+  contentClassName?: string;
 }
 
-function ControllerBox(props: ControllerBoxProps) {
-  const { label, children, borderTop = true } = props;
-  return (
-    <Accordion className="px-4" type="single" defaultValue="item-1" collapsible>
-      <AccordionItem
-        className={cn({
-          "border-t": borderTop,
-        })}
-        value="item-1"
+const ControllerBox = React.forwardRef<HTMLDivElement, ControllerBoxProps>(
+  (
+    {
+      title,
+      children,
+      defaultOpen = true,
+      borderTop = true,
+      className,
+      itemClassName,
+      contentClassName,
+    },
+    ref
+  ) => {
+    const generatedId = React.useId().replace(/[:]/g, "");
+
+    return (
+      <Accordion
+        type="single"
+        collapsible
+        className={cn("px-4", className)}
+        defaultValue={defaultOpen ? generatedId : undefined}
       >
-        <AccordionTrigger>{label}</AccordionTrigger>
-        <AccordionContent className="flex flex-col gap-2.5">
-          {children}
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
-  );
-}
+        <AccordionItem
+          ref={ref}
+          value={generatedId}
+          className={cn(
+            "border-border",
+            {
+              "border-t": borderTop,
+            },
+            itemClassName
+          )}
+        >
+          <AccordionTrigger className="text-sm font-semibold">
+            {title}
+          </AccordionTrigger>
+          <AccordionContent
+            className={cn("flex flex-col gap-2.5", contentClassName)}
+          >
+            {children}
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    );
+  }
+);
+
+ControllerBox.displayName = "ControllerBox";
 
 export default ControllerBox;

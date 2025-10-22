@@ -2,7 +2,7 @@
 import * as React from "react";
 import { v4 as uuid } from "uuid";
 import { toPng } from "html-to-image";
-import {
+import type {
   ICanvasState,
   IEditorBlock,
   IEditorBlockFrame,
@@ -12,6 +12,24 @@ import {
   Template,
 } from "./editor-types.d";
 import { loadFonts } from "./utils";
+
+const downloadFromHref = (href: string, filename: string) => {
+  const link = document.createElement("a");
+  link.href = href;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+const downloadBlob = (blob: Blob, filename: string) => {
+  const url = URL.createObjectURL(blob);
+  try {
+    downloadFromHref(url, filename);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+};
 
 export default function useEditor(defaultTemplate?: Template) {
   const [canvasState, setCanvasState] = React.useState<ICanvasState>({
@@ -27,7 +45,11 @@ export default function useEditor(defaultTemplate?: Template) {
   const [selectedBlocks, setSelectedBlocks] = React.useState<
     Array<SVGElement | HTMLElement>
   >([]);
+  const [hoveredBlockId, setHoveredBlockId] = React.useState<string | null>(
+    null
+  );
   const [newAddedBlock, setNewAddedBlock] = React.useState<string | null>(null);
+  const blockElementsRef = React.useRef(new Map<string, HTMLElement>());
   const canvasRef = React.useRef<HTMLDivElement>(null);
   const isUndoRedo = React.useRef(false);
   const isInitialRender = React.useRef(true);
@@ -271,10 +293,7 @@ export default function useEditor(defaultTemplate?: Template) {
         width: canvasState.size.width,
         height: canvasState.size.height,
       }).then((dataUrl) => {
-        const link = document.createElement("a");
-        link.download = "canvas.png";
-        link.href = dataUrl;
-        link.click();
+        downloadFromHref(dataUrl, "canvas.png");
       });
     }
   };
@@ -347,20 +366,16 @@ export default function useEditor(defaultTemplate?: Template) {
     });
 
     const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "canvas.json";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, "canvas.json");
   };
 
   // Set the new added block selected
   React.useEffect(() => {
     if (newAddedBlock) {
-      setSelectedBlocks([document.querySelector(`.block-${newAddedBlock}`)!]);
+      const blockElement = blockElementsRef.current.get(newAddedBlock);
+      if (blockElement) {
+        setSelectedBlocks([blockElement]);
+      }
       setNewAddedBlock(null);
     }
   }, [newAddedBlock]);
@@ -378,8 +393,7 @@ export default function useEditor(defaultTemplate?: Template) {
         setBlocks((prevBlocks) =>
           prevBlocks.filter((e) => !ids.includes(e.id))
         );
-        const hoveredElm = document.querySelector(".hovered") as any;
-        hoveredElm.style.display = "none";
+        setHoveredBlockId(null);
       }
     };
 
@@ -417,6 +431,54 @@ export default function useEditor(defaultTemplate?: Template) {
     }));
   }, [blocks, canvasState]);
 
+  const registerBlockElement = React.useCallback(
+    (id: string, element: HTMLElement | null) => {
+      if (!element) {
+        blockElementsRef.current.delete(id);
+        return;
+      }
+      blockElementsRef.current.set(id, element);
+    },
+    []
+  );
+
+  const getBlockElement = React.useCallback((id: string) => {
+    return blockElementsRef.current.get(id) ?? null;
+  }, []);
+
+  const getBlockElements = React.useCallback(() => {
+    return Array.from(blockElementsRef.current.values());
+  }, []);
+
+  const setBlockPosition = React.useCallback(
+    (id: string, position: { x: number; y: number }) => {
+      updateBlockValues(id, {
+        x: Math.trunc(position.x),
+        y: Math.trunc(position.y),
+      });
+    },
+    [updateBlockValues]
+  );
+
+  const setBlockSize = React.useCallback(
+    (
+      id: string,
+      size: { width?: number | null | undefined; height?: number | null | undefined }
+    ) => {
+      const nextValues: Partial<IEditorBlock> = {};
+      if (typeof size.width === "number") {
+        nextValues.width = size.width;
+      }
+      if (typeof size.height === "number") {
+        nextValues.height = size.height;
+      }
+      if (Object.keys(nextValues).length) {
+        updateBlockValues(id, nextValues);
+      }
+    },
+    [updateBlockValues]
+  );
+
   return {
     blocks,
     selectedBlocks,
@@ -441,6 +503,13 @@ export default function useEditor(defaultTemplate?: Template) {
     handleRedo,
     downloadImage,
     exportToJson,
+    registerBlockElement,
+    getBlockElement,
+    getBlockElements,
+    hoveredBlockId,
+    setHoveredBlockId,
+    setBlockPosition,
+    setBlockSize,
   };
 }
 

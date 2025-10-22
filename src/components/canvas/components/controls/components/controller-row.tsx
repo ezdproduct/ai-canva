@@ -1,18 +1,57 @@
-import React from "react";
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
-function ControllerRow({
-  label,
-  children,
-}: {
-  label?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-2.5 pl-2">
-      <p className="text-xs text-foreground/70 min-w-[60px]">{label}</p>
-      {children}
-    </div>
-  );
+interface ControllerRowProps
+  extends React.HTMLAttributes<HTMLDivElement> {
+  label?: React.ReactNode;
+  labelClassName?: string;
+  contentClassName?: string;
 }
+
+const ControllerRow = React.forwardRef<HTMLDivElement, ControllerRowProps>(
+  (
+    {
+      label,
+      children,
+      className,
+      labelClassName,
+      contentClassName,
+      ...props
+    },
+    ref
+  ) => {
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "flex items-center gap-2.5 pl-2 text-xs text-foreground/70",
+          className
+        )}
+        {...props}
+      >
+        {label ? (
+          <span
+            className={cn(
+              "min-w-[60px] text-left font-medium text-muted-foreground",
+              labelClassName
+            )}
+          >
+            {label}
+          </span>
+        ) : null}
+        <div
+          className={cn(
+            "flex flex-1 items-center justify-end gap-2",
+            contentClassName
+          )}
+        >
+          {children}
+        </div>
+      </div>
+    );
+  }
+);
+
+ControllerRow.displayName = "ControllerRow";
 
 export default ControllerRow;

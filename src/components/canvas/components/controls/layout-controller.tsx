@@ -1,113 +1,116 @@
 import { NumberInput } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { EditorContextType } from "../../use-editor";
-import { IEditorBlocks } from "../../editor-types";
+import { cn } from "@/lib/utils";
+import type { EditorContextType } from "../../use-editor";
+import type { IEditorBlocks } from "../../editor-types";
 import ControllerRow from "./components/controller-row";
 
-function LayoutController({
-  editor,
-  id,
-  block,
-}: {
+interface LayoutControllerProps {
   editor: EditorContextType;
   id: string;
   block: IEditorBlocks | undefined;
-}) {
+  className?: string;
+}
+
+function LayoutController({ editor, id, block, className }: LayoutControllerProps) {
   return (
-    <div className="p-4 flex flex-col gap-2.5">
-      <p className="text-sm font-semibold mb-1">Layout</p>
-      <ControllerRow label="Position">
+    <div className={cn("flex flex-col gap-2.5 p-4", className)}>
+      <p className="mb-1 text-sm font-semibold">Layout</p>
+
+      <ControllerRow label="Position" contentClassName="gap-3">
         <NumberInput
+          leftChild={<span className="text-xs text-muted-foreground">X</span>}
           value={block?.x}
-          onChange={(e) => {
+          onChange={(value) => {
             editor.updateBlockValues(id, {
-              x: e,
+              x: value,
             });
           }}
-          leftChild={<p className="text-xs text-foreground/40">X</p>}
         />
         <NumberInput
-          leftChild={<p className="text-xs text-foreground/40">Y</p>}
+          leftChild={<span className="text-xs text-muted-foreground">Y</span>}
           value={block?.y}
-          onChange={(e) => {
+          onChange={(value) => {
             editor.updateBlockValues(id, {
-              y: e,
+              y: value,
             });
           }}
         />
       </ControllerRow>
-      <ControllerRow label="Size">
+
+      <ControllerRow label="Size" contentClassName="gap-3">
         <NumberInput
-          leftChild={<p className="text-xs text-foreground/40">W</p>}
+          leftChild={<span className="text-xs text-muted-foreground">W</span>}
           value={block?.width}
-          onChange={(e) => {
-            if (!Number.isNaN(e)) {
-              if (block?.type === "image") {
-                const aspectRatio = block.width / block.height;
-                editor.updateBlockValues(id, {
-                  width: e,
-                  height: parseFloat((e / aspectRatio).toFixed(1)),
-                });
-              } else {
-                editor.updateBlockValues(id, {
-                  width: e,
-                });
-              }
+          min={2}
+          onChange={(value) => {
+            if (Number.isNaN(value) || !block) {
+              return;
+            }
+            if (block.type === "image") {
+              const aspectRatio = block.width / block.height;
+              editor.updateBlockValues(id, {
+                width: value,
+                height: Number.parseFloat((value / aspectRatio).toFixed(1)),
+              });
+            } else {
+              editor.updateBlockValues(id, { width: value });
             }
           }}
-          min={2}
         />
         <NumberInput
-          leftChild={<p className="text-xs text-foreground/40">H</p>}
+          leftChild={<span className="text-xs text-muted-foreground">H</span>}
           value={block?.height}
-          onChange={(e) => {
-            if (!Number.isNaN(e)) {
-              if (block?.type === "image") {
-                const aspectRatio = block.width / block.height;
-                editor.updateBlockValues(id, {
-                  height: e,
-                  width: parseFloat((e * aspectRatio).toFixed(1)),
-                });
-              } else {
-                editor.updateBlockValues(id, {
-                  height: e,
-                });
-              }
+          min={2}
+          onChange={(value) => {
+            if (Number.isNaN(value) || !block) {
+              return;
+            }
+            if (block.type === "image") {
+              const aspectRatio = block.width / block.height;
+              editor.updateBlockValues(id, {
+                height: value,
+                width: Number.parseFloat((value * aspectRatio).toFixed(1)),
+              });
+            } else {
+              editor.updateBlockValues(id, { height: value });
             }
           }}
-          min={2}
         />
       </ControllerRow>
-      <ControllerRow label="Rotate">
+
+      <ControllerRow label="Rotate" contentClassName="gap-3">
         <NumberInput
           value={block?.rotate?.value}
-          onChange={(e) => {
-            if (block) {
-              editor.updateBlockValues(id, {
-                rotate: {
-                  ...block.rotate,
-                  type: "2d",
-                  value: e,
-                },
-              });
+          onChange={(value) => {
+            if (!block) {
+              return;
             }
+            editor.updateBlockValues(id, {
+              rotate: {
+                ...block.rotate,
+                type: "2d",
+                value,
+              },
+            });
           }}
         />
         <Tabs
           value={block?.rotate?.type || "2d"}
           className="w-full"
-          onValueChange={(e) => {
-            if (block) {
-              editor.updateBlockValues(id, {
-                rotate: {
-                  value: e === "3d" ? parseFloat("") : 0,
-                  valueX: 0,
-                  valueY: 0,
-                  valueZ: 0,
-                  type: e as "2d" | "3d",
-                },
-              });
+          onValueChange={(value) => {
+            if (!block) {
+              return;
             }
+            editor.updateBlockValues(id, {
+              rotate: {
+                value: value === "3d" ? 0 : 0,
+                valueX: 0,
+                valueY: 0,
+                valueZ: 0,
+                type: value as "2d" | "3d",
+              },
+            });
           }}
         >
           <TabsList>
@@ -116,61 +119,63 @@ function LayoutController({
           </TabsList>
         </Tabs>
       </ControllerRow>
+
       {block?.rotate?.type === "3d" && (
-        <ControllerRow>
-          <div>
-            <div className="flex">
-              <NumberInput
-                className="rounded-tr-none rounded-br-none"
-                value={block?.rotate?.valueX}
-                onChange={(e) => {
-                  if (block) {
-                    editor.updateBlockValues(id, {
-                      rotate: {
-                        ...block.rotate,
-                        type: "3d",
-                        valueX: e,
-                      },
-                    });
-                  }
-                }}
-              />
-              <NumberInput
-                value={block?.rotate?.valueY}
-                className="rounded-none"
-                onChange={(e) => {
-                  if (block) {
-                    editor.updateBlockValues(id, {
-                      rotate: {
-                        ...block.rotate,
-                        type: "3d",
-                        valueY: e,
-                      },
-                    });
-                  }
-                }}
-              />
-              <NumberInput
-                className="rounded-tl-none rounded-bl-none"
-                value={block?.rotate?.valueZ}
-                onChange={(e) => {
-                  if (block) {
-                    editor.updateBlockValues(id, {
-                      rotate: {
-                        ...block.rotate,
-                        type: "3d",
-                        valueZ: e,
-                      },
-                    });
-                  }
-                }}
-              />
-            </div>
-            <div className="pt-1 flex justify-between *:flex-1 *:text-[9px] *:text-center *:text-foreground/40">
-              <span>X</span>
-              <span>Y</span>
-              <span>Z</span>
-            </div>
+        <ControllerRow contentClassName="flex-col gap-2">
+          <div className="flex">
+            <NumberInput
+              className="rounded-tr-none rounded-br-none"
+              value={block?.rotate?.valueX}
+              onChange={(value) => {
+                if (!block) {
+                  return;
+                }
+                editor.updateBlockValues(id, {
+                  rotate: {
+                    ...block.rotate,
+                    type: "3d",
+                    valueX: value,
+                  },
+                });
+              }}
+            />
+            <NumberInput
+              className="rounded-none"
+              value={block?.rotate?.valueY}
+              onChange={(value) => {
+                if (!block) {
+                  return;
+                }
+                editor.updateBlockValues(id, {
+                  rotate: {
+                    ...block.rotate,
+                    type: "3d",
+                    valueY: value,
+                  },
+                });
+              }}
+            />
+            <NumberInput
+              className="rounded-tl-none rounded-bl-none"
+              value={block?.rotate?.valueZ}
+              onChange={(value) => {
+                if (!block) {
+                  return;
+                }
+                editor.updateBlockValues(id, {
+                  rotate: {
+                    ...block.rotate,
+                    type: "3d",
+                    valueZ: value,
+                  },
+                });
+              }}
+            />
+          </div>
+          <div className="flex justify-between text-[9px] text-foreground/40">
+            <span>X</span>
+            <span>Y</span>
+            <span>Z</span>
           </div>
         </ControllerRow>
       )}

@@ -1,20 +1,24 @@
-import { IEditorBlockText } from "@/components/canvas/editor-types";
-import { EditorContextType } from "@/components/canvas/use-editor";
+import type { IEditorBlockText } from "@/components/canvas/editor-types";
+import type { EditorContextType } from "@/components/canvas/use-editor";
 import { NumberInput } from "@/components/ui/input";
 import ControllerRow from "../controller-row";
+
+interface FontSizeControlProps {
+  editor: EditorContextType;
+  id: string;
+  block: IEditorBlockText | undefined;
+  className?: string;
+}
 
 function FontSizeControl({
   editor,
   id,
   block,
-}: {
-  editor: EditorContextType;
-  id: string;
-  block: IEditorBlockText | undefined;
-}) {
+  className,
+}: FontSizeControlProps) {
   const onChange = (v: number) => {
     if (block) {
-      const el = document.querySelector(`.block-${block.id}`) as Element;
+      const el = editor.getBlockElement(block.id);
       const lineHeightRatio = block.lineHeight / block.fontSize;
       const newLineHeight = Math.round(lineHeightRatio * v);
       if (el && el?.scrollHeight > el?.clientHeight) {
@@ -32,7 +36,7 @@ function FontSizeControl({
     }
   };
   return (
-    <ControllerRow label="Size">
+    <ControllerRow label="Size" className={className} contentClassName="gap-3">
       <NumberInput
         min={0}
         max={500}
@@ -41,6 +45,7 @@ function FontSizeControl({
       />
       <input
         type="range"
+        className="h-1 w-full cursor-pointer"
         value={block?.fontSize}
         max={100}
         min={5}
