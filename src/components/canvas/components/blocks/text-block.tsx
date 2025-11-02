@@ -1,4 +1,3 @@
-/* eslint-disable react/no-danger */
 import {
   useCallback,
   useEffect,
@@ -37,10 +36,14 @@ function TextBlock({
     if (isEditing) {
       return;
     }
-    setDraftHtml(block.text);
     if (ref.current && ref.current.innerHTML !== block.text) {
       ref.current.innerHTML = block.text;
     }
+    // Update draftHtml only when not editing - use setTimeout to avoid synchronous update
+    const timeoutId = setTimeout(() => {
+      setDraftHtml(block.text);
+    }, 0);
+    return () => clearTimeout(timeoutId);
   }, [block.text, isEditing]);
 
   const maybeGrowHeight = useCallback(() => {
@@ -63,7 +66,7 @@ function TextBlock({
       if (nextHtml !== block.text) {
         editor.updateBlockValues(block.id, {
           text: nextHtml,
-        });
+        } as Parameters<typeof editor.updateBlockValues>[1]);
       }
     },
     [block.id, block.text, editor]
@@ -153,9 +156,7 @@ function TextBlock({
       onBlur={() => finishEditing(ref.current?.innerHTML ?? draftHtml)}
       onInput={handleInput}
       onPaste={handlePaste}
-      dangerouslySetInnerHTML={
-        isEditing ? undefined : { __html: block.text }
-      }
+      dangerouslySetInnerHTML={isEditing ? undefined : { __html: block.text }}
       block={block}
     />
   );

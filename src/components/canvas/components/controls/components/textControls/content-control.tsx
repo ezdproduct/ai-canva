@@ -28,11 +28,11 @@ function ContentControl({
               editor.updateBlockValues(block.id, {
                 text: e.target.value,
                 height: (el?.scrollHeight || block.height) + 2,
-              });
+              } as Parameters<typeof editor.updateBlockValues>[1]);
             } else {
               editor.updateBlockValues(id, {
                 text: e.target.value,
-              });
+              } as Parameters<typeof editor.updateBlockValues>[1]);
             }
           }
         }}
@@ -43,7 +43,7 @@ function ContentControl({
               if (el && el?.scrollHeight > el?.clientHeight) {
                 editor.updateBlockValues(block.id, {
                   height: (el?.scrollHeight || block.height) + 2,
-                });
+                } as Parameters<typeof editor.updateBlockValues>[1]);
               }
             }, 100);
           }

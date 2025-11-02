@@ -23,16 +23,20 @@ function LetterSpacingControl({
         editor.updateBlockValues(block.id, {
           letterSpacing: v,
           height: (el?.scrollHeight || block.height) + 2,
-        });
+        } as Parameters<typeof editor.updateBlockValues>[1]);
       } else {
         editor.updateBlockValues(id, {
           letterSpacing: v,
-        });
+        } as Parameters<typeof editor.updateBlockValues>[1]);
       }
     }
   };
   return (
-    <ControllerRow label="Spacing" className={className} contentClassName="gap-3">
+    <ControllerRow
+      label="Spacing"
+      className={className}
+      contentClassName="gap-3"
+    >
       <NumberInput
         min={-5}
         max={200}

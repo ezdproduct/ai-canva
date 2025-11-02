@@ -28,7 +28,7 @@ function TextTransformControl({
           if (block) {
             editor.updateBlockValues(id, {
               textTransform: e.target.value as ITextTransform,
-            });
+            } as Parameters<typeof editor.updateBlockValues>[1]);
           }
         }}
         className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"

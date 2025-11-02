@@ -34,7 +34,7 @@ function TextController({ editor, id, block, className }: TextControllerProps) {
         onChange={(e) => {
           editor.updateBlockValues(id, {
             color: e,
-          });
+          } as Parameters<typeof editor.updateBlockValues>[1]);
         }}
         className="justify-between"
       />

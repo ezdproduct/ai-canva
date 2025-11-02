@@ -23,11 +23,11 @@ function LineHeightControl({
         editor.updateBlockValues(block.id, {
           lineHeight: v,
           height: (el?.scrollHeight || block.height) + 2,
-        });
+        } as Parameters<typeof editor.updateBlockValues>[1]);
       } else {
         editor.updateBlockValues(id, {
           lineHeight: v,
-        });
+        } as Parameters<typeof editor.updateBlockValues>[1]);
       }
     }
   };

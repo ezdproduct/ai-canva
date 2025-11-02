@@ -65,7 +65,7 @@ function FontControl({ editor, id, block, className }: FontControlProps) {
           family,
           weight: nextWeight,
         },
-      });
+      } as Parameters<typeof editor.updateBlockValues>[1]);
     },
     [block, editor, id]
   );
@@ -127,7 +127,7 @@ function FontControl({ editor, id, block, className }: FontControlProps) {
               ...block.font,
               weight: fallbackWeight,
             },
-          });
+          } as Parameters<typeof editor.updateBlockValues>[1]);
         }
       }
     });
@@ -215,7 +215,7 @@ function FontControl({ editor, id, block, className }: FontControlProps) {
                 ...block.font,
                 weight: nextWeight,
               },
-            });
+            } as Parameters<typeof editor.updateBlockValues>[1]);
             handleWeightChange(block.font.family, nextWeight);
           }}
           disabled={(weights ?? []).length < 2}

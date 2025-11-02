@@ -26,12 +26,12 @@ function FontSizeControl({
           fontSize: v,
           height: (el?.scrollHeight || block.height) + 2,
           lineHeight: newLineHeight,
-        });
+        } as Parameters<typeof editor.updateBlockValues>[1]);
       } else {
         editor.updateBlockValues(id, {
           fontSize: v,
           lineHeight: newLineHeight,
-        });
+        } as Parameters<typeof editor.updateBlockValues>[1]);
       }
     }
   };

@@ -32,7 +32,7 @@ function TextDecorationControl({
           if (block) {
             editor.updateBlockValues(id, {
               textDecoration: e.target.value as ITextDecoration,
-            });
+            } as Parameters<typeof editor.updateBlockValues>[1]);
           }
         }}
         className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"

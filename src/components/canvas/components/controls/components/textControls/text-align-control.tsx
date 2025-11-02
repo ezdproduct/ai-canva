@@ -31,7 +31,7 @@ function TextAlignControl({
           if (block) {
             editor.updateBlockValues(id, {
               textAlign: e as ITextAlign,
-            });
+            } as Parameters<typeof editor.updateBlockValues>[1]);
           }
         }}
       >
