@@ -1,6 +1,6 @@
 import * as React from "react";
 import type { HTMLAttributes } from "react";
-import type { IEditorBlockFrame } from "../../editor-types";
+import type { IEditorBlockFrame } from "@/lib/schema";
 import type { EditorContextType } from "../../use-editor";
 import CommonBlock from "./common-block";
 

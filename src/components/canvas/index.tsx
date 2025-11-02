@@ -5,6 +5,7 @@ import EditorRightSide from "./components/editor-right-side";
 import EditorCanvas from "./components/editor-canvas";
 import type { EditorContextType } from "./use-editor";
 import { useIsMobile } from "./utils";
+import AIPrompt from "../ai-prompt";
 
 interface CanvasProps {
   editor: EditorContextType;
@@ -33,6 +34,7 @@ function Canvas({ editor }: CanvasProps) {
         <EditorCanvas editor={editor} />
         <EditorRightSide editor={editor} />
       </div>
+      <AIPrompt editor={editor} />
     </div>
   );
 }

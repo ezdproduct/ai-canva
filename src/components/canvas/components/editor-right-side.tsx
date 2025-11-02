@@ -3,7 +3,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import LayoutController from "./controls/layout-controller";
 import type { EditorContextType } from "../use-editor";
-import type { IEditorBlockText, IEditorBlockType } from "../editor-types";
+import type { IEditorBlockText, IEditorBlockType } from "@/lib/schema";
 import TextController from "./controls/text-controller";
 import LayerController from "./controls/layer-controller";
 import CanvasController from "./controls/canvas-controller";

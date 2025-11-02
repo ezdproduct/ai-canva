@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { IEditorBlocks } from "@/components/canvas/editor-types";
+import type { IEditorBlocks } from "@/lib/schema";
 import type { EditorContextType } from "@/components/canvas/use-editor";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import { NumberInput } from "@/components/ui/input";

@@ -1,4 +1,4 @@
-import type { IEditorBlockText } from "@/components/canvas/editor-types";
+import type { IEditorBlockText } from "@/lib/schema";
 import type { EditorContextType } from "@/components/canvas/use-editor";
 import { NumberInput } from "@/components/ui/input";
 import ControllerRow from "../controller-row";

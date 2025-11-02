@@ -19,7 +19,7 @@ import {
   FrontIcon,
 } from "@/components/ui/icons";
 import type { EditorContextType } from "../use-editor";
-import type { IEditorBlocks } from "../editor-types";
+import type { IEditorBlocks } from "@/lib/schema";
 import { BlockIcon } from "../utils";
 
 interface BlockItemProps extends React.HTMLAttributes<HTMLDivElement> {

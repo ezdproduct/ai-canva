@@ -2,7 +2,7 @@ import { NumberInput } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { EditorContextType } from "../../use-editor";
-import type { IEditorBlocks } from "../../editor-types";
+import type { IEditorBlocks } from "@/lib/schema";
 import ControllerRow from "./components/controller-row";
 
 interface LayoutControllerProps {

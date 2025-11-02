@@ -1,7 +1,7 @@
 import * as React from "react";
 import type { ListRowRenderer } from "react-virtualized";
 import { List } from "react-virtualized";
-import type { IEditorBlockText } from "@/components/canvas/editor-types";
+import type { IEditorBlockText } from "@/lib/schema";
 import type { EditorContextType } from "@/components/canvas/use-editor";
 import {
   Popover,

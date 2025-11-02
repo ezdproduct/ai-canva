@@ -15,7 +15,7 @@ import type {
   IEditorBlockImage,
   IEditorBlockText,
   IEditorBlocks,
-} from "../editor-types";
+} from "@/lib/schema";
 import ImageBlock from "./blocks/img-block";
 import { calculateDefaultZoom } from "../utils";
 

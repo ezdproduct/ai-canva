@@ -7,7 +7,7 @@ import {
   type ClipboardEventHandler,
   type HTMLAttributes,
 } from "react";
-import type { IEditorBlockText } from "../../editor-types";
+import type { IEditorBlockText } from "@/lib/schema";
 import type { EditorContextType } from "../../use-editor";
 import CommonBlock from "./common-block";
 

@@ -10,7 +10,8 @@ import type {
   IEditorBlocks,
   IEditorBlockText,
   Template,
-} from "./editor-types.d";
+} from "@/lib/schema";
+import { templateSchema, blockSchema } from "@/lib/schema";
 import { loadFonts } from "./utils";
 
 const downloadFromHref = (href: string, filename: string) => {
@@ -463,7 +464,10 @@ export default function useEditor(defaultTemplate?: Template) {
   const setBlockSize = React.useCallback(
     (
       id: string,
-      size: { width?: number | null | undefined; height?: number | null | undefined }
+      size: {
+        width?: number | null | undefined;
+        height?: number | null | undefined;
+      }
     ) => {
       const nextValues: Partial<IEditorBlock> = {};
       if (typeof size.width === "number") {
@@ -478,6 +482,69 @@ export default function useEditor(defaultTemplate?: Template) {
     },
     [updateBlockValues]
   );
+
+  const loadTemplate = React.useCallback(
+    (template: Template) => {
+      try {
+        // Validate template against schema
+        const validatedTemplate = templateSchema.parse(template);
+        const newBlocks = validatedTemplate.blocks || [];
+        const newSize = validatedTemplate.size || canvasState.size;
+        const newBackground = validatedTemplate.background || canvasState.background;
+
+        setBlocks(newBlocks);
+        setCanvasState((prevState) => ({
+          ...prevState,
+          size: newSize,
+          background: newBackground,
+        }));
+        setSelectedBlocks([]);
+        // Add to history for undo
+        setHistory((prevHistory) => ({
+          undo: [
+            {
+              blocks: newBlocks,
+              size: newSize,
+              background: newBackground,
+            },
+            ...prevHistory.undo,
+          ],
+          redo: [],
+        }));
+      } catch (error) {
+        console.error("Failed to validate template:", error);
+        // Fallback to unvalidated template if validation fails
+        const newBlocks = template.blocks || [];
+        const newSize = template.size || canvasState.size;
+        const newBackground = template.background || canvasState.background;
+
+        setBlocks(newBlocks);
+        setCanvasState((prevState) => ({
+          ...prevState,
+          size: newSize,
+          background: newBackground,
+        }));
+        setSelectedBlocks([]);
+      }
+    },
+    [canvasState.size, canvasState.background]
+  );
+
+  const addBlock = React.useCallback((block: IEditorBlocks) => {
+    try {
+      // Validate block against schema
+      const validatedBlock = blockSchema.parse(block);
+      setBlocks((prevBlocks) => [...prevBlocks, validatedBlock]);
+      setNewAddedBlock(validatedBlock.id);
+      onAddBlock();
+    } catch (error) {
+      console.error("Failed to validate block:", error);
+      // Fallback to unvalidated block if validation fails
+      setBlocks((prevBlocks) => [...prevBlocks, block]);
+      setNewAddedBlock(block.id);
+      onAddBlock();
+    }
+  }, [onAddBlock]);
 
   return {
     blocks,
@@ -510,6 +577,8 @@ export default function useEditor(defaultTemplate?: Template) {
     setHoveredBlockId,
     setBlockPosition,
     setBlockSize,
+    loadTemplate,
+    addBlock,
   };
 }
 

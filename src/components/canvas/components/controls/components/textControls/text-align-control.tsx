@@ -1,4 +1,4 @@
-import type { IEditorBlockText, ITextAlign } from "@/components/canvas/editor-types";
+import type { IEditorBlockText, ITextAlign } from "@/lib/schema";
 import type { EditorContextType } from "@/components/canvas/use-editor";
 import {
   TextAlignLeftIcon,

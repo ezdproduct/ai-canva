@@ -4,7 +4,7 @@ import type {
   IEditorBlocks,
   IEditorBlockText,
   IEditorBlockType,
-} from "./editor-types";
+} from "@/lib/schema";
 import { fontsList } from "./components/controls/components/textControls/fonts";
 
 export function BlockIcon(type: IEditorBlockType) {

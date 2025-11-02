@@ -1,5 +1,5 @@
 // import React from 'react';
-import type { IEditorBlocks } from "../../editor-types";
+import type { IEditorBlocks } from "@/lib/schema";
 import type { EditorContextType } from "../../use-editor";
 import BorderControl from "./components/border-control";
 import ControllerBox from "./components/controller-box";

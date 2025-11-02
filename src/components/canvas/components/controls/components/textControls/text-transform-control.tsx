@@ -1,7 +1,7 @@
 import type {
   IEditorBlockText,
   ITextTransform,
-} from "@/components/canvas/editor-types";
+} from "@/lib/schema";
 import type { EditorContextType } from "@/components/canvas/use-editor";
 import ControllerRow from "../controller-row";
 
