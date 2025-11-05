@@ -1,599 +1,960 @@
-import * as React from "react";
-import { v4 as uuid } from "uuid";
-import { toPng } from "html-to-image";
+'use client';
+
+import type Konva from 'konva';
+import { create } from 'zustand';
+import { v4 as uuid } from 'uuid';
 import type {
-  ICanvasState,
-  IEditorBlock,
   IEditorBlockFrame,
   IEditorBlockImage,
-  IEditorBlocks,
   IEditorBlockText,
+  IEditorBlocks,
+  IEditorSize,
   Template,
-} from "@/lib/schema";
-import { templateSchema, blockSchema } from "@/lib/schema";
-import { loadFonts } from "./utils";
+} from '@/lib/schema';
+import { frameBlockSchema, imageBlockSchema, textBlockSchema } from '@/lib/schema';
+import { loadFontsForBlocks } from './services/fonts';
+import { downloadStageAsImage, exportCanvasAsJson } from './services/export';
+import {
+  ensureBlockDefaults,
+  parseBlock,
+  parseTemplate,
+  MAX_IMAGE_DIMENSION,
+} from './services/templates';
+import { centerBlockInViewport, centerStageWithinContainer } from './utils/canvas-math';
 
-const downloadFromHref = (href: string, filename: string) => {
-  const link = document.createElement("a");
-  link.href = href;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
+type HistoryEntry = Pick<Template, 'blocks' | 'size' | 'background'>;
 
-const downloadBlob = (blob: Blob, filename: string) => {
-  const url = URL.createObjectURL(blob);
-  try {
-    downloadFromHref(url, filename);
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-};
-
-export default function useEditor(defaultTemplate?: Template) {
-  const [canvasState, setCanvasState] = React.useState<ICanvasState>({
-    size: defaultTemplate?.size || { width: 1280, height: 720 },
-    zoom: 1,
-    background: defaultTemplate?.background || "#ffffff",
-    mode: "select",
-    isTextEditing: false,
-  });
-  const [blocks, setBlocks] = React.useState<IEditorBlocks[]>(
-    defaultTemplate?.blocks || []
-  );
-  const [selectedBlocks, setSelectedBlocks] = React.useState<
-    Array<SVGElement | HTMLElement>
-  >([]);
-  const [hoveredBlockId, setHoveredBlockId] = React.useState<string | null>(
-    null
-  );
-  const [newAddedBlock, setNewAddedBlock] = React.useState<string | null>(null);
-  const blockElementsRef = React.useRef(new Map<string, HTMLElement>());
-  const canvasRef = React.useRef<HTMLDivElement>(null);
-  const isUndoRedo = React.useRef(false);
-  const isInitialRender = React.useRef(true);
-  const [history, setHistory] = React.useState({
-    undo: [] as Template[],
-    redo: [] as Template[],
-  });
-
-  // calculate center position
-  const calculatePosition = React.useCallback(
-    (width: number, height: number) => {
-      const { size } = canvasState;
-      return {
-        x: Math.round(size.width / 2 - width / 2),
-        y: Math.round(size.height / 2 - height / 2),
-      };
-    },
-    [canvasState]
-  );
-
-  // change editor mode
-  const changeMode = React.useCallback((mode: ICanvasState["mode"]) => {
-    if (mode === "move") {
-      setSelectedBlocks([]);
-    }
-    setCanvasState((prevState) => ({ ...prevState, mode }));
-  }, []);
-
-  // on ad block
-  const onAddBlock = React.useCallback(() => {
-    setCanvasState((prevState) => ({ ...prevState, mode: "select" }));
-  }, []);
-
-  const duplicateBlock = React.useCallback(
-    (prevId: string) => {
-      const id = uuid();
-      setBlocks((prevBlocks) => {
-        const block = prevBlocks.find((e) => e.id === prevId);
-        const index = prevBlocks.findIndex((e) => e.id === prevId);
-        if (block && index !== -1) {
-          const newBlock = { ...block };
-          newBlock.id = id;
-          newBlock.label = `Frame ${prevBlocks.length + 1}`;
-          newBlock.y += 10;
-          newBlock.x += 10;
-          return [
-            ...prevBlocks.slice(0, index + 1),
-            newBlock,
-            ...prevBlocks.slice(index + 1),
-          ];
-        }
-        return [...prevBlocks];
-      });
-      setNewAddedBlock(id);
-      onAddBlock();
-    },
-    [onAddBlock]
-  );
-
-  const deleteBlock = React.useCallback(
-    (id: string) => {
-      setBlocks((prevBlocks) => {
-        return prevBlocks.filter((e) => e.id !== id);
-      });
-      setNewAddedBlock(id);
-      onAddBlock();
-    },
-    [onAddBlock]
-  );
-
-  const showHideBlock = React.useCallback((id: string) => {
-    setSelectedBlocks([]);
-    setBlocks((prevBlocks) =>
-      prevBlocks.map((item) =>
-        item.id === id ? { ...item, visible: !item.visible } : item
-      )
-    );
-  }, []);
-
-  const updateBlockValues = React.useCallback(
-    (id: string, values: Partial<Omit<IEditorBlocks, "type">>) => {
-      setBlocks((prevBlocks) =>
-        prevBlocks.map((item) =>
-          id === item.id ? { ...item, ...values } : item
-        )
-      );
-    },
-    []
-  );
-
-  const blockDefaultCommonFields = () => {
-    const id = uuid();
-    return {
-      id,
-      locked: false,
-      rotate: {
-        type: "2d",
-        value: 0,
-        valueX: 0,
-        valueY: 0,
-        valueZ: 0,
-      },
-      visible: true,
-      opacity: 100,
-      radius: {
-        type: "all",
-        tl: 0,
-        tr: 0,
-        br: 0,
-        bl: 0,
-      },
-    };
-  };
-
-  // Add a text block to the canvas
-  const addTextBlock = React.useCallback(() => {
-    const defaultSettings = blockDefaultCommonFields();
-    setBlocks((prevBlocks) => [
-      ...prevBlocks,
-      {
-        ...defaultSettings,
-        label: `Text ${prevBlocks.length + 1}`,
-        type: "text",
-        ...calculatePosition(250, 26),
-        width: 250,
-        height: 26,
-        text: "Some text here...",
-        color: "#000000",
-        fontSize: 16,
-        letterSpacing: 0,
-        lineHeight: 24,
-        textAlign: "center",
-        font: {
-          family: "Poppins",
-          weight: "400",
-        },
-      } as IEditorBlockText,
-    ]);
-    setNewAddedBlock(defaultSettings.id);
-    onAddBlock();
-  }, [calculatePosition, onAddBlock]);
-
-  // Add a frame block to the canvas
-  const addFrameBlock = React.useCallback(() => {
-    const defaultSettings = blockDefaultCommonFields();
-    setBlocks((prevBlocks) => [
-      ...prevBlocks,
-      {
-        ...defaultSettings,
-        label: `Frame ${prevBlocks.length + 1}`,
-        type: "frame",
-        ...calculatePosition(200, 200),
-        width: 200,
-        height: 200,
-        border: {
-          width: {
-            type: "all",
-            top: 1,
-          },
-          color: "#000000",
-          type: "solid",
-        },
-      } as IEditorBlockFrame,
-    ]);
-    setNewAddedBlock(defaultSettings.id);
-    onAddBlock();
-  }, [calculatePosition, onAddBlock]);
-
-  // Add a image block to the canvas
-  const addImageBlock = React.useCallback(
-    ({
-      url,
-      width,
-      height,
-    }: {
-      url: string;
-      width: number;
-      height: number;
-    }) => {
-      const defaultSettings = blockDefaultCommonFields();
-      setBlocks((prevBlocks) => [
-        ...prevBlocks,
-        {
-          ...defaultSettings,
-          label: `Image ${prevBlocks.length + 1}`,
-          type: "image",
-          ...calculatePosition(width * 0.4, height * 0.4),
-          width: Math.round(width * 0.4),
-          height: Math.round(height * 0.4),
-          url,
-          fit: "contain",
-          position: "center",
-        } as IEditorBlockImage,
-      ]);
-      setNewAddedBlock(defaultSettings.id);
-      onAddBlock();
-    },
-    [calculatePosition, onAddBlock]
-  );
-
-  const bringForwardBlock = (id: string) => {
-    const index = blocks.findIndex((e) => e.id === id);
-    if (index !== -1 && index < blocks.length - 1) {
-      const newLayers = [...blocks];
-      [newLayers[index], newLayers[index + 1]] = [
-        newLayers[index + 1],
-        newLayers[index],
-      ];
-      setBlocks(newLayers);
-    }
-  };
-
-  const bringToTopBlock = (id: string) => {
-    const index = blocks.findIndex((e) => e.id === id);
-    if (index !== -1 && index < blocks.length - 1) {
-      const newLayers = [...blocks];
-      const [layer] = newLayers.splice(index, 1);
-      newLayers.push(layer);
-      setBlocks(newLayers);
-    }
-  };
-
-  const bringBackwardBlock = (id: string) => {
-    const index = blocks.findIndex((e) => e.id === id);
-    if (index !== -1 && index > 0) {
-      const newLayers = [...blocks];
-      [newLayers[index], newLayers[index - 1]] = [
-        newLayers[index - 1],
-        newLayers[index],
-      ];
-      setBlocks(newLayers);
-    }
-  };
-
-  const bringToBackBlock = (id: string) => {
-    const index = blocks.findIndex((e) => e.id === id);
-    if (index !== -1 && index > 0) {
-      const newLayers = [...blocks];
-      const [layer] = newLayers.splice(index, 1);
-      newLayers.unshift(layer);
-      setBlocks(newLayers);
-    }
-  };
-
-  const downloadImage = async () => {
-    if (canvasRef.current) {
-      await loadFonts(blocks);
-      toPng(canvasRef.current, {
-        cacheBust: true,
-        width: canvasState.size.width,
-        height: canvasState.size.height,
-      }).then((dataUrl) => {
-        downloadFromHref(dataUrl, "canvas.png");
-      });
-    }
-  };
-
-  const handleUndo = () => {
-    setSelectedBlocks([]);
-    setHistory((prevHistory) => {
-      if (prevHistory.undo.length === 0) return prevHistory;
-      const [currentEntry, undoEntry, ...remainingUndo] = prevHistory.undo;
-      isUndoRedo.current = true;
-
-      // Restore the previous state
-      setBlocks(undoEntry.blocks);
-      setCanvasState((prevState: ICanvasState) => ({
-        ...prevState,
-        size: undoEntry.size,
-        background: undoEntry.background,
-      }));
-
-      // Add current state to redo
-      return {
-        undo: [undoEntry, ...remainingUndo],
-        redo: [
-          {
-            blocks: currentEntry.blocks,
-            size: currentEntry.size,
-            background: currentEntry.background,
-          },
-          ...prevHistory.redo,
-        ],
-      };
-    });
-  };
-
-  const handleRedo = () => {
-    setSelectedBlocks([]);
-    setHistory((prevHistory) => {
-      if (prevHistory.redo.length === 0) return prevHistory;
-      const [redoEntry, ...remainingRedo] = prevHistory.redo;
-      isUndoRedo.current = true;
-
-      // Restore the next state
-      setBlocks(redoEntry.blocks);
-      setCanvasState((prevState: ICanvasState) => ({
-        ...prevState,
-        size: redoEntry.size,
-        background: redoEntry.background,
-      }));
-
-      // Add current state to undo
-      return {
-        undo: [
-          {
-            blocks: redoEntry.blocks,
-            size: redoEntry.size,
-            background: redoEntry.background,
-          },
-          ...prevHistory.undo,
-        ],
-        redo: remainingRedo,
-      };
-    });
-  };
-
-  const exportToJson = () => {
-    const json = JSON.stringify({
-      blocks,
-      size: canvasState.size,
-      background: canvasState.background,
-    });
-
-    const blob = new Blob([json], { type: "application/json" });
-    downloadBlob(blob, "canvas.json");
-  };
-
-  // Set the new added block selected
-  React.useEffect(() => {
-    if (newAddedBlock) {
-      const blockElement = blockElementsRef.current.get(newAddedBlock);
-      if (blockElement) {
-        setSelectedBlocks([blockElement]);
-      }
-      setNewAddedBlock(null);
-    }
-  }, [newAddedBlock]);
-
-  // Delete on backspace press
-  React.useEffect(() => {
-    const handleKeyUp = (event: KeyboardEvent) => {
-      const focusedElement = document.activeElement;
-      const isEditable =
-        (focusedElement instanceof HTMLElement &&
-          (["INPUT", "TEXTAREA"].includes(focusedElement.tagName) ||
-            focusedElement.hasAttribute("contentEditable"))) ||
-        false;
-      if (event.key === "Backspace" && selectedBlocks.length && !isEditable) {
-        const ids = selectedBlocks.map((e) => e?.id || "");
-        setSelectedBlocks([]);
-        setBlocks((prevBlocks) =>
-          prevBlocks.filter((e) => !ids.includes(e.id))
-        );
-        setHoveredBlockId(null);
-      }
-    };
-
-    document.addEventListener("keyup", handleKeyUp);
-
-    return () => {
-      document.removeEventListener("keyup", handleKeyUp);
-    };
-  }, [selectedBlocks.length, selectedBlocks]);
-
-  React.useEffect(() => {
-    loadFonts(blocks);
-  }, [blocks]);
-
-  React.useEffect(() => {
-    if (isInitialRender.current) {
-      isInitialRender.current = false;
-      return;
-    }
-
-    if (isUndoRedo.current) {
-      isUndoRedo.current = false;
-      return;
-    }
-    setHistory((prevHistory) => ({
-      undo: [
-        {
-          blocks,
-          size: canvasState.size,
-          background: canvasState.background,
-        },
-        ...prevHistory.undo,
-      ],
-      redo: [],
-    }));
-  }, [blocks, canvasState]);
-
-  const registerBlockElement = React.useCallback(
-    (id: string, element: HTMLElement | null) => {
-      if (!element) {
-        blockElementsRef.current.delete(id);
-        return;
-      }
-      blockElementsRef.current.set(id, element);
-    },
-    []
-  );
-
-  const getBlockElement = React.useCallback((id: string) => {
-    return blockElementsRef.current.get(id) ?? null;
-  }, []);
-
-  const getBlockElements = React.useCallback(() => {
-    return Array.from(blockElementsRef.current.values());
-  }, []);
-
-  const setBlockPosition = React.useCallback(
-    (id: string, position: { x: number; y: number }) => {
-      updateBlockValues(id, {
-        x: Math.trunc(position.x),
-        y: Math.trunc(position.y),
-      });
-    },
-    [updateBlockValues]
-  );
-
-  const setBlockSize = React.useCallback(
-    (
-      id: string,
-      size: {
-        width?: number | null | undefined;
-        height?: number | null | undefined;
-      }
-    ) => {
-      const nextValues: Partial<IEditorBlock> = {};
-      if (typeof size.width === "number") {
-        nextValues.width = size.width;
-      }
-      if (typeof size.height === "number") {
-        nextValues.height = size.height;
-      }
-      if (Object.keys(nextValues).length) {
-        updateBlockValues(id, nextValues);
-      }
-    },
-    [updateBlockValues]
-  );
-
-  const loadTemplate = React.useCallback(
-    (template: Template) => {
-      try {
-        // Validate template against schema
-        const validatedTemplate = templateSchema.parse(template);
-        const newBlocks = validatedTemplate.blocks || [];
-        const newSize = validatedTemplate.size || canvasState.size;
-        const newBackground =
-          validatedTemplate.background || canvasState.background;
-
-        setBlocks(newBlocks);
-        setCanvasState((prevState) => ({
-          ...prevState,
-          size: newSize,
-          background: newBackground,
-        }));
-        setSelectedBlocks([]);
-        // Add to history for undo
-        setHistory((prevHistory) => ({
-          undo: [
-            {
-              blocks: newBlocks,
-              size: newSize,
-              background: newBackground,
-            },
-            ...prevHistory.undo,
-          ],
-          redo: [],
-        }));
-      } catch (error) {
-        console.error("Failed to validate template:", error);
-        // Fallback to unvalidated template if validation fails
-        const newBlocks = template.blocks || [];
-        const newSize = template.size || canvasState.size;
-        const newBackground = template.background || canvasState.background;
-
-        setBlocks(newBlocks);
-        setCanvasState((prevState) => ({
-          ...prevState,
-          size: newSize,
-          background: newBackground,
-        }));
-        setSelectedBlocks([]);
-      }
-    },
-    [canvasState.size, canvasState.background]
-  );
-
-  const addBlock = React.useCallback(
-    (block: IEditorBlocks) => {
-      try {
-        // Validate block against schema
-        const validatedBlock = blockSchema.parse(block);
-        setBlocks((prevBlocks) => [...prevBlocks, validatedBlock]);
-        setNewAddedBlock(validatedBlock.id);
-        onAddBlock();
-      } catch (error) {
-        console.error("Failed to validate block:", error);
-        // Fallback to unvalidated block if validation fails
-        setBlocks((prevBlocks) => [...prevBlocks, block]);
-        setNewAddedBlock(block.id);
-        onAddBlock();
-      }
-    },
-    [onAddBlock]
-  );
-
-  return {
-    blocks,
-    selectedBlocks,
-    setSelectedBlocks,
-    canvasState,
-    setCanvasState,
-    duplicateBlock,
-    deleteBlock,
-    showHideBlock,
-    addTextBlock,
-    addImageBlock,
-    addFrameBlock,
-    changeMode,
-    updateBlockValues,
-    bringForwardBlock,
-    bringToTopBlock,
-    bringBackwardBlock,
-    bringToBackBlock,
-    canvasRef,
-    history,
-    handleUndo,
-    handleRedo,
-    downloadImage,
-    exportToJson,
-    registerBlockElement,
-    getBlockElement,
-    getBlockElements,
-    hoveredBlockId,
-    setHoveredBlockId,
-    setBlockPosition,
-    setBlockSize,
-    loadTemplate,
-    addBlock,
-  };
+interface EditorCanvasState {
+  size: IEditorSize;
+  background?: string;
+  mode: 'move' | 'select';
+  isTextEditing: boolean;
+  zoom: number;
+  stagePosition: { x: number; y: number };
+  containerSize: { width: number; height: number };
+  hasCentered: boolean;
 }
 
-export type EditorContextType = ReturnType<typeof useEditor>;
+interface EditorState {
+  blocksById: Record<string, IEditorBlocks>;
+  blockOrder: string[];
+  selectedIds: string[];
+  hoveredId: string | null;
+  canvas: EditorCanvasState;
+  history: {
+    undo: HistoryEntry[];
+    redo: HistoryEntry[];
+  };
+  stage: Konva.Stage | null;
+}
+
+interface EditorActions {
+  setStage: (stage: Konva.Stage | null) => void;
+  setSelectedIds: (ids: string[]) => void;
+  setMode: (mode: 'move' | 'select') => void;
+  setIsTextEditing: (value: boolean) => void;
+  setStageZoom: (zoom: number) => void;
+  setStagePosition: (position: { x: number; y: number }) => void;
+  setCanvasContainerSize: (size: { width: number; height: number }) => void;
+  centerStage: () => void;
+  updateCanvasSize: (size: Partial<IEditorSize>) => void;
+  setCanvasBackground: (background: string | undefined) => void;
+  setHoveredId: (id: string | null) => void;
+  addTextBlock: () => void;
+  addFrameBlock: () => void;
+  addImageBlock: (args: { url: string; width: number; height: number }) => void;
+  duplicateBlock: (id: string) => void;
+  deleteBlock: (id: string) => void;
+  deleteSelectedBlocks: () => void;
+  showHideBlock: (id: string) => void;
+  updateBlockValues: (id: string, values: Partial<IEditorBlocks>) => void;
+  bringForwardBlock: (id: string) => void;
+  bringToTopBlock: (id: string) => void;
+  bringBackwardBlock: (id: string) => void;
+  bringToBackBlock: (id: string) => void;
+  setBlockPosition: (id: string, position: { x: number; y: number }) => void;
+  setBlockSize: (id: string, size: { width?: number | null; height?: number | null }) => void;
+  addBlock: (block: IEditorBlocks) => void;
+  loadTemplate: (template: Template) => void;
+  handleUndo: () => void;
+  handleRedo: () => void;
+  downloadImage: () => Promise<void>;
+  exportToJson: () => void;
+}
+
+export type EditorStore = EditorState & EditorActions;
+
+const clone = <T,>(value: T): T =>
+  typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+
+const createSnapshot = (state: EditorState): HistoryEntry => ({
+  blocks: state.blockOrder
+    .map((id) => state.blocksById[id])
+    .filter(Boolean)
+    .map((block) => clone(block)),
+  size: clone(state.canvas.size),
+  background: state.canvas.background,
+});
+
+export const selectOrderedBlocks = (state: EditorState): IEditorBlocks[] =>
+  state.blockOrder.map((id) => state.blocksById[id]).filter(Boolean);
+
+const blocksArray = selectOrderedBlocks;
+
+const calculateViewportCenteredPosition = (state: EditorState, width: number, height: number) =>
+  centerBlockInViewport(
+    {
+      stage: state.stage,
+      stagePosition: state.canvas.stagePosition,
+      zoom: state.canvas.zoom || 1,
+      containerSize: state.canvas.containerSize,
+      canvasSize: state.canvas.size,
+    },
+    width,
+    height,
+  );
+
+const computeCenteredStagePosition = (state: EditorState) => {
+  const {
+    canvas: { size, containerSize, zoom },
+  } = state;
+  if (!containerSize.width || !containerSize.height || !size.width || !size.height) {
+    return null;
+  }
+  return centerStageWithinContainer({
+    canvasSize: size,
+    containerSize,
+    zoom: zoom || 1,
+  });
+};
+
+const buildInitialState = (template?: Template): EditorState => {
+  const { canvasSize, background, blocksById, blockOrder } = parseTemplate(template);
+
+  return {
+    blocksById,
+    blockOrder,
+    selectedIds: [],
+    hoveredId: null,
+    canvas: {
+      size: canvasSize,
+      background,
+      mode: 'select',
+      isTextEditing: false,
+      zoom: 1,
+      stagePosition: { x: 0, y: 0 },
+      containerSize: { width: 0, height: 0 },
+      hasCentered: false,
+    },
+    history: {
+      undo: [],
+      redo: [],
+    },
+    stage: null,
+  };
+};
+
+export const useEditorStore = create<EditorStore>((set, get) => ({
+  ...buildInitialState(),
+
+  setStage: (stage) => {
+    set((state) => {
+      if (state.stage === stage) {
+        return state;
+      }
+      if (!stage) {
+        return { ...state, stage };
+      }
+      const nextState: EditorState = { ...state, stage };
+      if (nextState.canvas.hasCentered) {
+        return nextState;
+      }
+      const position = computeCenteredStagePosition(nextState);
+      if (!position) {
+        return nextState;
+      }
+      return {
+        ...nextState,
+        canvas: {
+          ...nextState.canvas,
+          stagePosition: position,
+          hasCentered: true,
+        },
+      };
+    });
+  },
+
+  setSelectedIds: (ids) => {
+    set((state) => {
+      if (state.selectedIds.length === ids.length && state.selectedIds.every((value, index) => value === ids[index])) {
+        return state;
+      }
+      return { ...state, selectedIds: ids };
+    });
+  },
+
+  setMode: (mode) => {
+    set((state) => {
+      if (state.canvas.mode === mode) {
+        return state;
+      }
+      return {
+        ...state,
+        canvas: { ...state.canvas, mode },
+        ...(mode === 'move' ? { selectedIds: [] } : {}),
+      };
+    });
+  },
+
+  setIsTextEditing: (value) => {
+    set((state) =>
+      state.canvas.isTextEditing === value
+        ? state
+        : {
+            ...state,
+            canvas: { ...state.canvas, isTextEditing: value },
+          },
+    );
+  },
+
+  setStageZoom: (zoom) => {
+    set((state) => (state.canvas.zoom === zoom ? state : { ...state, canvas: { ...state.canvas, zoom } }));
+  },
+
+  setStagePosition: (position) => {
+    set((state) => {
+      const current = state.canvas.stagePosition;
+      if (current.x === position.x && current.y === position.y) {
+        if (state.canvas.hasCentered) {
+          return state;
+        }
+        return {
+          ...state,
+          canvas: { ...state.canvas, hasCentered: true },
+        };
+      }
+      return {
+        ...state,
+        canvas: {
+          ...state.canvas,
+          stagePosition: position,
+          hasCentered: true,
+        },
+      };
+    });
+  },
+
+  setHoveredId: (id) => {
+    set((state) => (state.hoveredId === id ? state : { ...state, hoveredId: id }));
+  },
+
+  setCanvasContainerSize: (size) => {
+    set((state) => {
+      const current = state.canvas.containerSize;
+      if (current.width === size.width && current.height === size.height) {
+        return state;
+      }
+      const nextCanvas = {
+        ...state.canvas,
+        containerSize: size,
+      };
+      if (state.canvas.hasCentered) {
+        return {
+          ...state,
+          canvas: nextCanvas,
+        };
+      }
+      const position = computeCenteredStagePosition({ ...state, canvas: nextCanvas });
+      if (!position) {
+        return {
+          ...state,
+          canvas: nextCanvas,
+        };
+      }
+      return {
+        ...state,
+        canvas: {
+          ...nextCanvas,
+          stagePosition: position,
+          hasCentered: true,
+        },
+      };
+    });
+  },
+
+  centerStage: () => {
+    set((state) => {
+      const position = computeCenteredStagePosition(state);
+      if (!position) {
+        return state;
+      }
+      const current = state.canvas.stagePosition;
+      if (current.x === position.x && current.y === position.y && state.canvas.hasCentered) {
+        return state;
+      }
+      return {
+        ...state,
+        canvas: {
+          ...state.canvas,
+          stagePosition: position,
+          hasCentered: true,
+        },
+      };
+    });
+  },
+
+  updateCanvasSize: (size) => {
+    set((state) => {
+      const nextSize = {
+        ...state.canvas.size,
+        ...size,
+      };
+      const snapshot = createSnapshot(state);
+      const nextCanvas = {
+        ...state.canvas,
+        size: nextSize,
+        hasCentered: false,
+      };
+      const position = computeCenteredStagePosition({ ...state, canvas: nextCanvas });
+      const centeredCanvas = position
+        ? {
+            ...nextCanvas,
+            stagePosition: position,
+            hasCentered: true,
+          }
+        : nextCanvas;
+      return {
+        ...state,
+        canvas: {
+          ...centeredCanvas,
+        },
+        history: {
+          undo: [snapshot, ...state.history.undo],
+          redo: [],
+        },
+      };
+    });
+  },
+
+  setCanvasBackground: (background) => {
+    set((state) => {
+      const snapshot = createSnapshot(state);
+      return {
+        ...state,
+        canvas: {
+          ...state.canvas,
+          background,
+        },
+        history: {
+          undo: [snapshot, ...state.history.undo],
+          redo: [],
+        },
+      };
+    });
+  },
+
+  addTextBlock: () => {
+    set((state) => {
+      const snapshot = createSnapshot(state);
+      const blocks = blocksArray(state);
+      const position = calculateViewportCenteredPosition(state, 320, 52);
+      const defaultBlock = ensureBlockDefaults(
+        textBlockSchema.parse({
+          id: uuid(),
+          type: 'text',
+          label: `Text ${blocks.length + 1}`,
+          ...position,
+          width: 320,
+          height: 52,
+          text: 'New text',
+          color: '#1f2933',
+          fontSize: 24,
+          lineHeight: 32,
+          letterSpacing: 0,
+          textAlign: 'left',
+          font: { family: 'Poppins', weight: '500' },
+          visible: true,
+          opacity: 100,
+        } satisfies IEditorBlockText),
+      );
+
+      return {
+        ...state,
+        blocksById: {
+          ...state.blocksById,
+          [defaultBlock.id]: defaultBlock,
+        },
+        blockOrder: [...state.blockOrder, defaultBlock.id],
+        selectedIds: [defaultBlock.id],
+        canvas: { ...state.canvas, mode: 'select' },
+        history: {
+          undo: [snapshot, ...state.history.undo],
+          redo: [],
+        },
+      };
+    });
+  },
+
+  addFrameBlock: () => {
+    set((state) => {
+      const snapshot = createSnapshot(state);
+      const blocks = blocksArray(state);
+      const position = calculateViewportCenteredPosition(state, 240, 240);
+      const defaultBlock = ensureBlockDefaults(
+        frameBlockSchema.parse({
+          id: uuid(),
+          type: 'frame',
+          label: `Frame ${blocks.length + 1}`,
+          ...position,
+          width: 240,
+          height: 240,
+          background: '#ffffff',
+          border: {
+            color: '#d1d5db',
+            width: 1,
+          },
+          radius: { tl: 16, tr: 16, br: 16, bl: 16 },
+          visible: true,
+          opacity: 100,
+        } satisfies IEditorBlockFrame),
+      );
+
+      return {
+        ...state,
+        blocksById: {
+          ...state.blocksById,
+          [defaultBlock.id]: defaultBlock,
+        },
+        blockOrder: [...state.blockOrder, defaultBlock.id],
+        selectedIds: [defaultBlock.id],
+        canvas: { ...state.canvas, mode: 'select' },
+        history: {
+          undo: [snapshot, ...state.history.undo],
+          redo: [],
+        },
+      };
+    });
+  },
+
+  addImageBlock: ({ url, width, height }) => {
+    set((state) => {
+      const snapshot = createSnapshot(state);
+      const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(width, height));
+      const scaledWidth = Math.max(1, Math.round(width * scale));
+      const scaledHeight = Math.max(1, Math.round(height * scale));
+      const blocks = blocksArray(state);
+      const position = calculateViewportCenteredPosition(state, scaledWidth, scaledHeight);
+
+      const defaultBlock = ensureBlockDefaults(
+        imageBlockSchema.parse({
+          id: uuid(),
+          type: 'image',
+          label: `Image ${blocks.length + 1}`,
+          ...position,
+          width: scaledWidth,
+          height: scaledHeight,
+          url,
+          fit: 'contain',
+          position: 'center',
+          visible: true,
+          opacity: 100,
+        } satisfies IEditorBlockImage),
+      );
+
+      return {
+        ...state,
+        blocksById: {
+          ...state.blocksById,
+          [defaultBlock.id]: defaultBlock,
+        },
+        blockOrder: [...state.blockOrder, defaultBlock.id],
+        selectedIds: [defaultBlock.id],
+        canvas: { ...state.canvas, mode: 'select' },
+        history: {
+          undo: [snapshot, ...state.history.undo],
+          redo: [],
+        },
+      };
+    });
+  },
+
+  duplicateBlock: (id) => {
+    set((state) => {
+      const block = state.blocksById[id];
+      if (!block) {
+        return state;
+      }
+      const snapshot = createSnapshot(state);
+      const newId = uuid();
+      const duplicated = parseBlock({
+        ...clone(block),
+        id: newId,
+        label: `${block.label} Copy`,
+        x: block.x + 24,
+        y: block.y + 24,
+      });
+
+      const index = state.blockOrder.indexOf(id);
+      const nextOrder = [...state.blockOrder];
+      nextOrder.splice(index + 1, 0, newId);
+
+      return {
+        ...state,
+        blocksById: {
+          ...state.blocksById,
+          [duplicated.id]: duplicated,
+        },
+        blockOrder: nextOrder,
+        selectedIds: [duplicated.id],
+        history: {
+          undo: [snapshot, ...state.history.undo],
+          redo: [],
+        },
+      };
+    });
+  },
+
+  deleteBlock: (id) => {
+    set((state) => {
+      if (!state.blocksById[id]) {
+        return state;
+      }
+      const snapshot = createSnapshot(state);
+      const rest = { ...state.blocksById };
+      delete rest[id];
+      const nextOrder = state.blockOrder.filter((blockId) => blockId !== id);
+      const nextSelected = state.selectedIds.filter((blockId) => blockId !== id);
+      const nextHovered = state.hoveredId === id ? null : state.hoveredId;
+      return {
+        ...state,
+        blocksById: rest,
+        blockOrder: nextOrder,
+        selectedIds: nextSelected,
+        hoveredId: nextHovered,
+        history: {
+          undo: [snapshot, ...state.history.undo],
+          redo: [],
+        },
+      };
+    });
+  },
+
+  deleteSelectedBlocks: () => {
+    set((state) => {
+      if (state.selectedIds.length === 0) {
+        return state;
+      }
+      const snapshot = createSnapshot(state);
+      const idsToRemove = new Set(state.selectedIds);
+      const nextBlocksById = { ...state.blocksById };
+      idsToRemove.forEach((blockId) => {
+        delete nextBlocksById[blockId];
+      });
+      const nextOrder = state.blockOrder.filter((blockId) => !idsToRemove.has(blockId));
+      const nextHovered = idsToRemove.has(state.hoveredId ?? '') ? null : state.hoveredId;
+      return {
+        ...state,
+        blocksById: nextBlocksById,
+        blockOrder: nextOrder,
+        selectedIds: [],
+        hoveredId: nextHovered,
+        history: {
+          undo: [snapshot, ...state.history.undo],
+          redo: [],
+        },
+      };
+    });
+  },
+
+  showHideBlock: (id) => {
+    set((state) => {
+      const block = state.blocksById[id];
+      if (!block) {
+        return state;
+      }
+      const snapshot = createSnapshot(state);
+      const nextBlock = { ...block, visible: !block.visible };
+      return {
+        ...state,
+        blocksById: {
+          ...state.blocksById,
+          [id]: nextBlock,
+        },
+        history: {
+          undo: [snapshot, ...state.history.undo],
+          redo: [],
+        },
+      };
+    });
+  },
+
+  updateBlockValues: (id, values) => {
+    set((state) => {
+      const block = state.blocksById[id];
+      if (!block) {
+        return state;
+      }
+      const snapshot = createSnapshot(state);
+      const nextBlock = ensureBlockDefaults({
+        ...block,
+        ...values,
+      });
+      return {
+        ...state,
+        blocksById: {
+          ...state.blocksById,
+          [id]: nextBlock,
+        },
+        history: {
+          undo: [snapshot, ...state.history.undo],
+          redo: [],
+        },
+      };
+    });
+  },
+
+  bringForwardBlock: (id) => {
+    set((state) => {
+      const index = state.blockOrder.indexOf(id);
+      if (index === -1 || index === state.blockOrder.length - 1) {
+        return state;
+      }
+      const snapshot = createSnapshot(state);
+      const nextOrder = [...state.blockOrder];
+      [nextOrder[index], nextOrder[index + 1]] = [nextOrder[index + 1], nextOrder[index]];
+      return {
+        ...state,
+        blockOrder: nextOrder,
+        history: {
+          undo: [snapshot, ...state.history.undo],
+          redo: [],
+        },
+      };
+    });
+  },
+
+  bringToTopBlock: (id) => {
+    set((state) => {
+      const index = state.blockOrder.indexOf(id);
+      if (index === -1 || index === state.blockOrder.length - 1) {
+        return state;
+      }
+      const snapshot = createSnapshot(state);
+      const nextOrder = [...state.blockOrder];
+      nextOrder.splice(index, 1);
+      nextOrder.push(id);
+      return {
+        ...state,
+        blockOrder: nextOrder,
+        history: {
+          undo: [snapshot, ...state.history.undo],
+          redo: [],
+        },
+      };
+    });
+  },
+
+  bringBackwardBlock: (id) => {
+    set((state) => {
+      const index = state.blockOrder.indexOf(id);
+      if (index <= 0) {
+        return state;
+      }
+      const snapshot = createSnapshot(state);
+      const nextOrder = [...state.blockOrder];
+      [nextOrder[index], nextOrder[index - 1]] = [nextOrder[index - 1], nextOrder[index]];
+      return {
+        ...state,
+        blockOrder: nextOrder,
+        history: {
+          undo: [snapshot, ...state.history.undo],
+          redo: [],
+        },
+      };
+    });
+  },
+
+  bringToBackBlock: (id) => {
+    set((state) => {
+      const index = state.blockOrder.indexOf(id);
+      if (index <= 0) {
+        return state;
+      }
+      const snapshot = createSnapshot(state);
+      const nextOrder = [...state.blockOrder];
+      nextOrder.splice(index, 1);
+      nextOrder.unshift(id);
+      return {
+        ...state,
+        blockOrder: nextOrder,
+        history: {
+          undo: [snapshot, ...state.history.undo],
+          redo: [],
+        },
+      };
+    });
+  },
+
+  setBlockPosition: (id, position) => {
+    set((state) => {
+      const block = state.blocksById[id];
+      if (!block) {
+        return state;
+      }
+      const snapshot = createSnapshot(state);
+      const nextBlock = { ...block, x: Math.round(position.x), y: Math.round(position.y) };
+      return {
+        ...state,
+        blocksById: {
+          ...state.blocksById,
+          [id]: nextBlock,
+        },
+        history: {
+          undo: [snapshot, ...state.history.undo],
+          redo: [],
+        },
+      };
+    });
+  },
+
+  setBlockSize: (id, size) => {
+    set((state) => {
+      const block = state.blocksById[id];
+      if (!block) {
+        return state;
+      }
+      const snapshot = createSnapshot(state);
+      const nextBlock = {
+        ...block,
+        ...(typeof size.width === 'number' ? { width: Math.max(1, size.width) } : {}),
+        ...(typeof size.height === 'number' ? { height: Math.max(1, size.height) } : {}),
+      };
+      return {
+        ...state,
+        blocksById: {
+          ...state.blocksById,
+          [id]: nextBlock,
+        },
+        history: {
+          undo: [snapshot, ...state.history.undo],
+          redo: [],
+        },
+      };
+    });
+  },
+
+  addBlock: (block) => {
+    set((state) => {
+      const snapshot = createSnapshot(state);
+      const parsed = parseBlock(block);
+      return {
+        ...state,
+        blocksById: {
+          ...state.blocksById,
+          [parsed.id]: parsed,
+        },
+        blockOrder: [...state.blockOrder, parsed.id],
+        selectedIds: [parsed.id],
+        history: {
+          undo: [snapshot, ...state.history.undo],
+          redo: [],
+        },
+      };
+    });
+  },
+
+  loadTemplate: (template) => {
+    set((state) => {
+      const snapshot = createSnapshot(state);
+      const initial = buildInitialState(template);
+      const mergedState: EditorState = {
+        ...state,
+        blocksById: initial.blocksById,
+        blockOrder: initial.blockOrder,
+        selectedIds: initial.selectedIds,
+        hoveredId: null,
+        canvas: {
+          ...initial.canvas,
+          containerSize: state.canvas.containerSize,
+          zoom: state.canvas.zoom,
+          stagePosition: state.canvas.stagePosition,
+          hasCentered: false,
+        },
+        history: {
+          undo: [snapshot, ...state.history.undo],
+          redo: [],
+        },
+        stage: state.stage,
+      };
+      const position = computeCenteredStagePosition(mergedState);
+      if (!position) {
+        return mergedState;
+      }
+      return {
+        ...mergedState,
+        canvas: {
+          ...mergedState.canvas,
+          stagePosition: position,
+          hasCentered: true,
+        },
+      };
+    });
+  },
+
+  handleUndo: () => {
+    set((state) => {
+      if (state.history.undo.length === 0) {
+        return state;
+      }
+      const [snapshot, ...remainingUndo] = state.history.undo;
+      const redoSnapshot = createSnapshot(state);
+      const nextBlocksById = snapshot.blocks.reduce<Record<string, IEditorBlocks>>((acc, block) => {
+        acc[block.id] = block;
+        return acc;
+      }, {});
+      const nextOrder = snapshot.blocks.map((block) => block.id);
+      const baseState: EditorState = {
+        ...state,
+        blocksById: nextBlocksById,
+        blockOrder: nextOrder,
+        selectedIds: [],
+        canvas: {
+          ...state.canvas,
+          size: snapshot.size,
+          background: snapshot.background ?? state.canvas.background,
+          hasCentered: false,
+        },
+        history: {
+          undo: remainingUndo,
+          redo: [redoSnapshot, ...state.history.redo],
+        },
+      };
+      const position = computeCenteredStagePosition(baseState);
+      if (!position) {
+        return baseState;
+      }
+      return {
+        ...baseState,
+        canvas: {
+          ...baseState.canvas,
+          stagePosition: position,
+          hasCentered: true,
+        },
+      };
+    });
+  },
+
+  handleRedo: () => {
+    set((state) => {
+      if (state.history.redo.length === 0) {
+        return state;
+      }
+      const [snapshot, ...remainingRedo] = state.history.redo;
+      const undoSnapshot = createSnapshot(state);
+      const nextBlocksById = snapshot.blocks.reduce<Record<string, IEditorBlocks>>((acc, block) => {
+        acc[block.id] = block;
+        return acc;
+      }, {});
+      const nextOrder = snapshot.blocks.map((block) => block.id);
+      const baseState: EditorState = {
+        ...state,
+        blocksById: nextBlocksById,
+        blockOrder: nextOrder,
+        selectedIds: [],
+        canvas: {
+          ...state.canvas,
+          size: snapshot.size,
+          background: snapshot.background ?? state.canvas.background,
+          hasCentered: false,
+        },
+        history: {
+          undo: [undoSnapshot, ...state.history.undo],
+          redo: remainingRedo,
+        },
+      };
+      const position = computeCenteredStagePosition(baseState);
+      if (!position) {
+        return baseState;
+      }
+      return {
+        ...baseState,
+        canvas: {
+          ...baseState.canvas,
+          stagePosition: position,
+          hasCentered: true,
+        },
+      };
+    });
+  },
+
+  downloadImage: async () => {
+    const state = get();
+    const { stage } = state;
+    if (!stage) {
+      return;
+    }
+    await downloadStageAsImage(stage, blocksArray(state));
+  },
+
+  exportToJson: () => {
+    const state = get();
+    exportCanvasAsJson({
+      blocks: blocksArray(state),
+      size: state.canvas.size,
+      background: state.canvas.background,
+    });
+  },
+}));
+
+const selectBlocksForFonts = (state: EditorState) =>
+  state.blockOrder.map((id) => state.blocksById[id]).filter(Boolean);
+
+const blocksAreEqual = (prev: IEditorBlocks[], next: IEditorBlocks[]) =>
+  prev.length === next.length && prev.every((block, index) => block === next[index]);
+
+void loadFontsForBlocks(selectBlocksForFonts(useEditorStore.getState()));
+
+useEditorStore.subscribe(
+  selectBlocksForFonts,
+  (blocks) => {
+    void loadFontsForBlocks(blocks);
+  },
+  { equalityFn: blocksAreEqual }
+);
+
+export const editorStoreApi = useEditorStore;
+
+export const initializeEditorStore = (template?: Template) => {
+  const initial = buildInitialState(template);
+  useEditorStore.setState((state) => {
+    const mergedCanvas = {
+      ...initial.canvas,
+      containerSize: state.canvas.containerSize,
+      zoom: state.canvas.zoom,
+      stagePosition: state.canvas.stagePosition,
+      hasCentered: false,
+    };
+    const mergedState: EditorState = {
+      ...state,
+      blocksById: initial.blocksById,
+      blockOrder: initial.blockOrder,
+      selectedIds: initial.selectedIds,
+      hoveredId: initial.hoveredId,
+      canvas: mergedCanvas,
+      history: initial.history,
+      stage: state.stage,
+    };
+    const position = computeCenteredStagePosition(mergedState);
+    if (!position) {
+      return mergedState;
+    }
+    return {
+      ...mergedState,
+      canvas: {
+        ...mergedCanvas,
+        stagePosition: position,
+        hasCentered: true,
+      },
+    };
+  });
+};

@@ -1,18 +1,25 @@
+'use client';
+
+import * as React from "react";
 import { TbInfoTriangleFilled } from "react-icons/tb";
-import EditorHeader from "./components/editor-header";
-import EditorLeftSide from "./components/editor-left-side";
-import EditorRightSide from "./components/editor-right-side";
-import EditorCanvas from "./components/editor-canvas";
-import type { EditorContextType } from "./use-editor";
+import EditorHeader from "./views/editor-header";
+import EditorLeftSide from "./views/editor-left-side";
+import EditorRightSide from "./views/editor-right-side";
+import EditorCanvas from "./views/editor-canvas";
+import { initializeEditorStore } from "./use-editor";
 import { useIsMobile } from "./utils";
 import AIPrompt from "../ai-prompt";
+import type { Template } from "@/lib/schema";
 
 interface CanvasProps {
-  editor: EditorContextType;
+  template?: Template;
 }
 
-function Canvas({ editor }: CanvasProps) {
+function Canvas({ template }: CanvasProps) {
   const isMobile = useIsMobile();
+  React.useLayoutEffect(() => {
+    initializeEditorStore(template);
+  }, [template]);
 
   if (isMobile) {
     return (
@@ -28,13 +35,13 @@ function Canvas({ editor }: CanvasProps) {
 
   return (
     <div className="editor-canvas-wrapper h-screen">
-      <EditorHeader editor={editor} />
+      <EditorHeader />
       <div className="flex h-[calc(100vh-60px)]">
-        <EditorLeftSide editor={editor} />
-        <EditorCanvas editor={editor} />
-        <EditorRightSide editor={editor} />
+        <EditorLeftSide />
+        <EditorCanvas />
+        <EditorRightSide />
       </div>
-      <AIPrompt editor={editor} />
+      <AIPrompt />
     </div>
   );
 }

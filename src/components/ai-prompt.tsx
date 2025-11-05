@@ -4,21 +4,18 @@ import * as React from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { cn } from "@/lib/utils";
-import type { EditorContextType } from "./canvas/use-editor";
 import { blockSchema } from "@/lib/schema";
 import type { CustomUIMessage } from "@/lib/ai-tools";
 import { v4 as uuid } from "uuid";
 import { Button } from "./ui/button";
 import { Loader2, Send, X } from "lucide-react";
+import { useEditorStore } from "./canvas/use-editor";
 
-interface AIPromptProps {
-  editor: EditorContextType;
-}
-
-export default function AIPrompt({ editor }: AIPromptProps) {
+export default function AIPrompt() {
   const [input, setInput] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const [isExpanded, setIsExpanded] = React.useState(false);
+  const addBlock = useEditorStore((state) => state.addBlock);
 
   const { sendMessage, status } = useChat<CustomUIMessage>({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
@@ -41,7 +38,7 @@ export default function AIPrompt({ editor }: AIPromptProps) {
         const validatedBlock = blockSchema.parse(blockWithId);
 
         // Add the validated block to the canvas
-        editor.addBlock(validatedBlock);
+        addBlock(validatedBlock);
         setError(null);
       } catch (err) {
         console.error("Failed to add generated block:", err, toolCall);

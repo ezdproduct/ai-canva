@@ -1,11 +1,6 @@
 import { BoxIcon, ImageIcon, TextIcon } from "@radix-ui/react-icons";
 import { useEffect, useState } from "react";
-import type {
-  IEditorBlocks,
-  IEditorBlockText,
-  IEditorBlockType,
-} from "@/lib/schema";
-import { fontsList } from "./components/controls/components/textControls/fonts";
+import type { IEditorBlockType } from "@/lib/schema";
 
 export function BlockIcon(type: IEditorBlockType) {
   switch (type) {
@@ -20,132 +15,8 @@ export function BlockIcon(type: IEditorBlockType) {
   }
 }
 
-const loadedFontWeights = new Map<string, Set<string>>();
 
-const ensureFontStyleElement = () => {
-  if (typeof document === "undefined") {
-    return null;
-  }
-  const existing = document.getElementById(
-    "dynamic-font-loader"
-  ) as HTMLStyleElement | null;
-  if (existing) {
-    return existing;
-  }
-  const style = document.createElement("style");
-  style.id = "dynamic-font-loader";
-  document.head.appendChild(style);
-  return style;
-};
-
-export const loadFont = async (fontKey: string, weights: string[]) => {
-  if (!weights.length || typeof document === "undefined") {
-    return;
-  }
-
-  const uniqueRequestedWeights = Array.from(new Set(weights));
-  const cachedWeights =
-    loadedFontWeights.get(fontKey) ?? new Set<string>();
-  const weightsToLoad = uniqueRequestedWeights.filter(
-    (weight) => !cachedWeights.has(weight)
-  );
-
-  if (!weightsToLoad.length) {
-    return;
-  }
-
-  try {
-    const fontObject = await fontsList
-      .find((font) => font.family === fontKey)
-      ?.load();
-
-    if (!fontObject) {
-      throw new Error(`Font ${fontKey} not found`);
-    }
-
-    const fontInfo = fontObject.getInfo();
-    if (!fontInfo) {
-      throw new Error(`Font ${fontKey} not loaded`);
-    }
-
-    const cssRules: string[] = [];
-    const loadPromises: Promise<void>[] = [];
-
-    for (const weight of weightsToLoad) {
-      const fontFace = fontInfo.fonts?.normal?.[weight];
-      if (!fontFace) {
-        continue;
-      }
-
-      const fontUrl = fontFace?.latin;
-      if (!fontUrl) {
-        continue;
-      }
-
-      // Create and load font face
-      const font = new FontFace(fontKey, `url(${fontUrl})`, {
-        weight: weight.toString(),
-        style: "normal",
-      });
-
-      const loadPromise = font.load().then((loadedFont) => {
-        document.fonts.add(loadedFont);
-      });
-
-      loadPromises.push(loadPromise);
-      cssRules.push(`
-        @font-face {
-          font-family: '${fontKey}';
-          src: url('${fontUrl}');
-          font-weight: ${weight};
-          font-style: normal;
-        }
-      `);
-    }
-
-    if (!loadPromises.length) {
-      return;
-    }
-
-    await Promise.all(loadPromises);
-    await document.fonts.ready;
-
-    const styleElement = ensureFontStyleElement();
-    if (styleElement && cssRules.length) {
-      styleElement.textContent = [
-        styleElement.textContent ?? "",
-        cssRules.join("\n"),
-      ]
-        .filter(Boolean)
-        .join("\n");
-    }
-
-    const updatedWeights = cachedWeights;
-    weightsToLoad.forEach((weight) => updatedWeights.add(weight));
-    loadedFontWeights.set(fontKey, updatedWeights);
-  } catch {
-    // Handle error
-  }
-};
-
-export const loadFonts = async (blocks: IEditorBlocks[]) => {
-  const textBlocks = blocks.filter(
-    (block) => block.type === "text"
-  ) as IEditorBlockText[];
-
-  const fontWeightMap = new Map<string, Set<string>>();
-
-  textBlocks.forEach((block) => {
-    const weightSet =
-      fontWeightMap.get(block.font.family) ?? new Set<string>();
-    weightSet.add(block.font.weight);
-    fontWeightMap.set(block.font.family, weightSet);
-  });
-
-  for (const [font, weights] of fontWeightMap.entries()) {
-    await loadFont(font, Array.from(weights));
-  }
-};
+export const blockNodeId = (blockId: string) => `block-${blockId}`;
 
 export const useIsMobile = () => {
   const [isMobile, setIsMobile] = useState(false);
@@ -193,4 +64,117 @@ export const calculateDefaultZoom = (
   const defaultZoom = Math.floor(minRatio * 100);
 
   return defaultZoom / 100;
+};
+
+const splitGradientArgs = (input: string) => {
+  const args: string[] = [];
+  let buffer = "";
+  let depth = 0;
+  for (const char of input) {
+    if (char === "(" ) {
+      depth += 1;
+      buffer += char;
+      continue;
+    }
+    if (char === ")") {
+      depth = Math.max(0, depth - 1);
+      buffer += char;
+      continue;
+    }
+    if (char === "," && depth === 0) {
+      args.push(buffer.trim());
+      buffer = "";
+      continue;
+    }
+    buffer += char;
+  }
+  if (buffer.trim()) {
+    args.push(buffer.trim());
+  }
+  return args;
+};
+
+const parseStop = (value: string, index: number, total: number) => {
+  const colorMatch = value.match(/(rgba?\([^\)]+\)|#[0-9a-fA-F]{3,8}|hsl\([^\)]+\)|hsla\([^\)]+\)|[a-zA-Z]+)/);
+  const color = colorMatch ? colorMatch[0].trim() : value.trim();
+  const remainder = value.replace(color, "").trim();
+  let offset: number;
+  if (remainder.endsWith("%")) {
+    offset = Number.parseFloat(remainder) / 100;
+  } else if (remainder.length === 0) {
+    if (total === 1) {
+      offset = 0;
+    } else {
+      offset = index / (total - 1);
+    }
+  } else {
+    offset = Number.parseFloat(remainder);
+    if (Number.isNaN(offset)) {
+      offset = total === 1 ? 0 : index / (total - 1);
+    }
+  }
+  return { color, offset: Math.min(Math.max(offset, 0), 1) } as const;
+};
+
+const angleToPoints = (angleDeg: number, width: number, height: number) => {
+  const angleRad = ((90 - angleDeg) * Math.PI) / 180;
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+  const diagonal = Math.sqrt(width * width + height * height);
+  const distance = diagonal / 2;
+  const dx = Math.cos(angleRad) * distance;
+  const dy = Math.sin(angleRad) * distance;
+  return {
+    start: { x: halfWidth - dx, y: halfHeight - dy },
+    end: { x: halfWidth + dx, y: halfHeight + dy },
+  };
+};
+
+export const parseLinearGradientFill = (
+  value: string,
+  width: number,
+  height: number
+) => {
+  const match = value.match(/linear-gradient\((.*)\)/i);
+  if (!match) {
+    return { fill: value };
+  }
+  const inner = match[1];
+  const parts = splitGradientArgs(inner);
+  if (!parts.length) {
+    return { fill: value };
+  }
+  let angle = 180;
+  const first = parts[0];
+  const directionMatch = first.match(/^to\s+([a-z\s]+)/i);
+  if (directionMatch) {
+    const dir = directionMatch[1].trim().toLowerCase();
+    if (dir === "right") angle = 90;
+    else if (dir === "left") angle = 270;
+    else if (dir === "bottom") angle = 180;
+    else if (dir === "top") angle = 0;
+    else if (dir === "top right" || dir === "right top") angle = 45;
+    else if (dir === "bottom right" || dir === "right bottom") angle = 135;
+    else if (dir === "bottom left" || dir === "left bottom") angle = 225;
+    else if (dir === "top left" || dir === "left top") angle = 315;
+    parts.shift();
+  } else {
+    const angleMatch = first.match(/(-?\d+(?:\.\d+)?)deg/);
+    if (angleMatch) {
+      angle = Number.parseFloat(angleMatch[1]);
+      parts.shift();
+    }
+  }
+  const stops = parts.length ? parts : [first];
+  const parsedStops = stops.map((stop, index) => parseStop(stop, index, stops.length));
+  const colorStops: (number | string)[] = [];
+  parsedStops.forEach((stop) => {
+    colorStops.push(stop.offset, stop.color);
+  });
+  const { start, end } = angleToPoints(angle, width, height);
+  return {
+    fillLinearGradientStartPoint: start,
+    fillLinearGradientEndPoint: end,
+    fillLinearGradientColorStops: colorStops,
+  } as const;
 };

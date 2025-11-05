@@ -199,51 +199,6 @@
   transform-origin: top;
 }
 
-.moveable-guideline.moveable-vertical {
-  background-color: rgba(199, 119, 0, 0.5) !important;
-  width: 1px !important;
-}
-
-.moveable-guideline.moveable-horizontal {
-  background-color: rgba(199, 119, 0, 0.5) !important;
-  height: 1px !important;
-}
-
-.infinite-viewer-scroll-thumb {
-  background: #3333334a !important;
-}
-
-.selecto-selection {
-  z-index: 10 !important;
-}
-
-.editor-canvas-scroll {
-  @apply bg-gray/30;
-  background-image: radial-gradient(
-    rgba(26, 32, 44, 0.063) 1.2px,
-    rgba(0, 0, 0, 0) 1.2px
-  );
-  background-size: 10px 10px;
-}
-
-.dark .editor-canvas-scroll {
-  background-image: radial-gradient(
-    rgba(255, 255, 255, 0.04) 1.2px,
-    rgba(255, 255, 255, 0) 1.2px
-  );
-}
-
-.hovered {
-  border: 1px solid;
-  border-color: oklch(0.51 0.2331 295.86);
-  position: absolute;
-  top: 0;
-  left: 0;
-  display: none;
-  z-index: 1;
-  pointer-events: none;
-}
-
 .sidebar-item:hover .sidebar-item-actions {
   visibility: visible;
 }
@@ -252,8 +207,22 @@
   width: 154px;
 }
 
-.infinite-viewer-wrapper {
-  outline: none;
+.canvas-stage {
+  background-color: rgb(241 245 249);
+  background-image: radial-gradient(
+      rgba(26, 32, 44, 0.06) 1.2px,
+      rgba(0, 0, 0, 0) 1.2px
+    );
+  background-size: 10px 10px;
+}
+
+.dark .canvas-stage {
+  background-color: rgb(15 23 42);
+  background-image: radial-gradient(
+      rgba(255, 255, 255, 0.05) 1.2px,
+      rgba(255, 255, 255, 0) 1.2px
+    );
+  background-size: 10px 10px;
 }
 
 /* Chrome, Safari, Edge, Opera */
