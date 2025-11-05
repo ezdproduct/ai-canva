@@ -376,9 +376,11 @@ function EditorCanvas() {
   const stageRef = React.useRef<Konva.Stage | null>(null);
   const transformerRef = React.useRef<Konva.Transformer | null>(null);
   const selectionStartRef = React.useRef<PointerPosition | null>(null);
+  const selectionChangedRef = React.useRef(false);
   const storeApi = editorStoreApi;
 
   const [selectionRect, setSelectionRect] = React.useState<SelectionRect | null>(null);
+  const [previewSelectionIds, setPreviewSelectionIds] = React.useState<string[]>([]);
   const [isSelecting, setIsSelecting] = React.useState(false);
   const [editingText, setEditingText] = React.useState<{
     id: string;
@@ -494,6 +496,7 @@ function EditorCanvas() {
     setIsSelecting(false);
     setSelectionRect(null);
     selectionStartRef.current = null;
+    setPreviewSelectionIds([]);
   }, []);
 
   const handleStageMouseDown = React.useCallback(
@@ -511,20 +514,18 @@ function EditorCanvas() {
         return;
       }
       const isCanvasNode = target.hasName('canvas-node');
-      const isBackground = target === stage;
-      if (!isBackground) {
-        if (!event.evt.shiftKey && !isCanvasNode) {
-          setSelectedIds([]);
-        }
+      if (isCanvasNode) {
         return;
       }
       if (!event.evt.shiftKey) {
         setSelectedIds([]);
       }
+      setPreviewSelectionIds([]);
       const pointer = getPointerPosition(stage);
       if (!pointer) {
         return;
       }
+      selectionChangedRef.current = false;
       const canvasPoint = toCanvasCoordinates(stage, pointer, zoom);
       selectionStartRef.current = canvasPoint;
       setSelectionRect({ x: canvasPoint.x, y: canvasPoint.y, width: 0, height: 0 });
@@ -535,6 +536,7 @@ function EditorCanvas() {
 
   const handleStageMouseMove = React.useCallback(() => {
     if (!isSelecting) {
+      setPreviewSelectionIds([]);
       return;
     }
     const stage = stageRef.current;
@@ -546,8 +548,13 @@ function EditorCanvas() {
       return;
     }
     const canvasPoint = toCanvasCoordinates(stage, pointer, zoom);
-    setSelectionRect(rectFromPoints(selectionStartRef.current, canvasPoint));
-  }, [isSelecting, zoom]);
+    const rect = rectFromPoints(selectionStartRef.current, canvasPoint);
+    setSelectionRect(rect);
+    const previewIds = blocks
+      .filter((block) => isBlockVisible(block) && blockIntersectsRect(block, rect))
+      .map((block) => block.id);
+    setPreviewSelectionIds(previewIds);
+  }, [blocks, isSelecting, zoom]);
 
   const handleStageMouseUp = React.useCallback(() => {
     if (!isSelecting || !selectionRect) {
@@ -559,10 +566,12 @@ function EditorCanvas() {
       .map((block) => block.id);
     updateSelection((current) => {
       if (current.length === 0) {
+        selectionChangedRef.current = newSelection.length > 0;
         return newSelection;
       }
       const merged = new Set(current);
       newSelection.forEach((id) => merged.add(id));
+      selectionChangedRef.current = newSelection.length > 0;
       return Array.from(merged);
     });
     commitSelectionRect();
@@ -574,13 +583,18 @@ function EditorCanvas() {
       if (!stage) {
         return;
       }
+      if (selectionChangedRef.current) {
+        selectionChangedRef.current = false;
+        return;
+      }
       const target = event.target;
       const transformer = transformerRef.current;
       if (isTransformerNode(target, transformer)) {
         return;
       }
-      if (target === stage) {
+      if (!target.hasName('canvas-node')) {
         setSelectedIds([]);
+        setPreviewSelectionIds([]);
       }
     },
     [setSelectedIds]
@@ -780,11 +794,15 @@ function EditorCanvas() {
             const handleBlockClick = (evt: KonvaEventObject<MouseEvent | TouchEvent>) =>
               handleNodeSelection(block, evt);
 
+            const isPreviewed = !selectedIds.includes(block.id) && previewSelectionIds.includes(block.id);
+
+            let content: React.ReactNode = null;
             if (block.type === 'frame') {
-              return <FrameNode key={block.id} block={block as IEditorBlockFrame} onClick={handleBlockClick} {...dragHandlers} />;
-            }
-            if (block.type === 'text') {
-              return (
+              content = (
+                <FrameNode key={block.id} block={block as IEditorBlockFrame} onClick={handleBlockClick} {...dragHandlers} />
+              );
+            } else if (block.type === 'text') {
+              content = (
                 <Group key={block.id}>
                   <TextNode
                     block={block as IEditorBlockText}
@@ -799,9 +817,8 @@ function EditorCanvas() {
                   />
                 </Group>
               );
-            }
-            if (block.type === 'image') {
-              return (
+            } else if (block.type === 'image') {
+              content = (
                 <ImageNode
                   key={block.id}
                   block={block as IEditorBlockImage}
@@ -810,7 +827,17 @@ function EditorCanvas() {
                 />
               );
             }
-            return null;
+
+            if (!content) {
+              return null;
+            }
+
+            return (
+              <React.Fragment key={block.id}>
+                {content}
+                {isPreviewed ? <HoverOutline block={block} zoom={zoom} /> : null}
+              </React.Fragment>
+            );
           })}
 
           {hoveredId
@@ -824,8 +851,10 @@ function EditorCanvas() {
             : null}
         </Layer>
 
-        <Layer>
+        <Layer listening={false}>
           <SelectionOutline rect={selectionRect} zoom={zoom} />
+        </Layer>
+        <Layer>
           {selectedIds.length > 0 && !isTextEditing ? (
             <Transformer
               ref={transformerRef}
