@@ -36,6 +36,23 @@ export const useCanvasHotkeys = ({ setMode, addFrameBlock, addTextBlock, deleteS
 
       const state = store.getState();
 
+      // Handle Cmd+A / Ctrl+A to select all blocks
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'a') {
+        if (isEditableTarget(event.target) || state.canvas.isTextEditing) {
+          return; // Let browser handle select all in input fields
+        }
+        event.preventDefault();
+        // Get all visible blocks
+        const allBlockIds = state.blockOrder
+          .map((id) => state.blocksById[id])
+          .filter((block) => block && block.visible)
+          .map((block) => block!.id);
+        if (allBlockIds.length > 0) {
+          store.getState().setSelectedIds(allBlockIds);
+        }
+        return;
+      }
+
       if (event.code === 'Space') {
         if (event.metaKey || event.ctrlKey || event.altKey) {
           return;
