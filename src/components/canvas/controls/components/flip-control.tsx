@@ -1,4 +1,4 @@
-import { PiFlipHorizontalFill, PiFlipVerticalFill } from "react-icons/pi";
+import { FlipHorizontal, FlipVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ControllerRow from "./controller-row";
@@ -32,7 +32,7 @@ function FlipControl({ blockId, className }: FlipControlProps) {
           });
         }}
       >
-        <PiFlipHorizontalFill />
+        <FlipHorizontal />
       </Button>
       <Button
         variant="outline"
@@ -49,7 +49,7 @@ function FlipControl({ blockId, className }: FlipControlProps) {
           });
         }}
       >
-        <PiFlipVerticalFill />
+        <FlipVertical />
       </Button>
     </ControllerRow>
   );

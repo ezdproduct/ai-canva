@@ -9,16 +9,18 @@ interface ButtonsGroupProps {
     onClick?: () => void;
     isActive?: boolean;
     label: string;
+    hotkey?: string;
     disabled?: boolean;
   }[];
+  className?: string;
 }
 
 function ButtonsGroup(props: ButtonsGroupProps) {
-  const { buttons } = props;
+  const { buttons, className } = props;
   return (
-    <div className="flex items-center gap-2">
+    <div className={cn("flex items-center gap-2", className)}>
       {buttons.map((button, index) => (
-        <CustomTooltip key={index} content={button.label}>
+        <CustomTooltip key={index} content={button.label} hotkey={button.hotkey}>
           <Button
             onClick={button.onClick}
             variant="ghost"

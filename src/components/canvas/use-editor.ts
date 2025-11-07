@@ -991,16 +991,19 @@ const blocksAreEqual = (prev: IEditorBlocks[], next: IEditorBlocks[]) =>
   prev.length === next.length &&
   prev.every((block, index) => block === next[index]);
 
-void loadFontsForBlocks(selectBlocksForFonts(useEditorStore.getState()));
+// Initialize fonts for initial state (client-side only)
+if (typeof window !== "undefined") {
+  void loadFontsForBlocks(selectBlocksForFonts(useEditorStore.getState()));
 
-let prevBlocks = selectBlocksForFonts(useEditorStore.getState());
-useEditorStore.subscribe((state) => {
-  const blocks = selectBlocksForFonts(state);
-  if (!blocksAreEqual(prevBlocks, blocks)) {
-    prevBlocks = blocks;
-    void loadFontsForBlocks(blocks);
-  }
-});
+  let prevBlocks = selectBlocksForFonts(useEditorStore.getState());
+  useEditorStore.subscribe((state) => {
+    const blocks = selectBlocksForFonts(state);
+    if (!blocksAreEqual(prevBlocks, blocks)) {
+      prevBlocks = blocks;
+      void loadFontsForBlocks(blocks);
+    }
+  });
+}
 
 export const editorStoreApi = useEditorStore;
 

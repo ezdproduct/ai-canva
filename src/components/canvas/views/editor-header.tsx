@@ -1,31 +1,28 @@
 import * as React from "react";
 import { CursorArrowIcon, HandIcon } from "@radix-ui/react-icons";
-import { FiDownload } from "react-icons/fi";
-import { GrUndo, GrRedo } from "react-icons/gr";
+import { Download, Undo, Redo } from "lucide-react";
 import ButtonsGroup from "@/components/ui/buttons-group";
 import { Button } from "@/components/ui/button";
 import { useEditorStore } from "../use-editor";
 import { BlockIcon } from "../utils";
 import { cn } from "@/lib/utils";
-import { shallow } from "zustand/shallow";
+import { useShallow } from "zustand/react/shallow";
 
 function EditorHeader({ className }: { className?: string }) {
   const imageInputRef = React.useRef<HTMLInputElement>(null);
   const [mode, setMode] = useEditorStore(
-    (state) => [state.canvas.mode, state.setMode],
-    shallow
+    useShallow((state) => [state.canvas.mode, state.setMode])
   );
   const addTextBlock = useEditorStore((state) => state.addTextBlock);
   const addFrameBlock = useEditorStore((state) => state.addFrameBlock);
   const addImageBlock = useEditorStore((state) => state.addImageBlock);
   const [handleUndo, handleRedo, undoCount, redoCount] = useEditorStore(
-    (state) => [
+    useShallow((state) => [
       state.handleUndo,
       state.handleRedo,
       state.history.undo.length,
       state.history.redo.length,
-    ],
-    shallow
+    ])
   );
   const downloadImage = useEditorStore((state) => state.downloadImage);
 
@@ -44,12 +41,14 @@ function EditorHeader({ className }: { className?: string }) {
               onClick: () => setMode("select"),
               isActive: mode === "select",
               label: "Select",
+              hotkey: "V",
             },
             {
               children: <HandIcon />,
               onClick: () => setMode("move"),
               isActive: mode === "move",
               label: "Move",
+              hotkey: "Space",
             },
           ]}
         />
@@ -59,6 +58,7 @@ function EditorHeader({ className }: { className?: string }) {
               children: BlockIcon("text"),
               onClick: () => addTextBlock(),
               label: "Add Text",
+              hotkey: "T",
             },
             {
               children: BlockIcon("image"),
@@ -73,29 +73,34 @@ function EditorHeader({ className }: { className?: string }) {
               children: BlockIcon("frame"),
               onClick: () => addFrameBlock(),
               label: "Add Frame",
+              hotkey: "F",
             },
           ]}
+          className="hidden md:flex"
         />
-        <div className="w-px h-6 bg-border mx-1" />
+        <div className="hidden md:block w-px h-6 bg-border mx-1" />
         <ButtonsGroup
           buttons={[
             {
-              children: <GrUndo />,
+              children: <Undo />,
               onClick: handleUndo,
               label: "Undo",
+              hotkey: "⌘Z",
               disabled: undoCount === 0,
             },
             {
-              children: <GrRedo />,
+              children: <Redo />,
               onClick: handleRedo,
               label: "Redo",
+              hotkey: "⌘⇧Z",
               disabled: redoCount === 0,
             },
           ]}
+          className="hidden md:flex"
         />
-        <div className="w-px h-6 bg-border mx-1" />
-        <Button className="gap-2 rounded-xl h-10 px-6" onClick={downloadImage}>
-          <FiDownload /> Export
+        <div className="hidden md:block w-px h-6 bg-border mx-1" />
+        <Button className="hidden md:flex gap-2 rounded-xl h-10 px-6" onClick={downloadImage}>
+          <Download /> Export
         </Button>
       </div>
       <input

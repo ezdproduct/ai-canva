@@ -3,18 +3,17 @@ import ControllerBox from "./components/controller-box";
 import ColorControl from "./components/color-control";
 import ControllerRow from "./components/controller-row";
 import { useEditorStore } from "@/components/canvas/use-editor";
-import { shallow } from "zustand/shallow";
+import { useShallow } from "zustand/react/shallow";
 
 function CanvasController({ className }: { className?: string }) {
   const [size, updateCanvasSize, setCanvasBackground, background] =
     useEditorStore(
-      (state) => [
+      useShallow((state) => [
         state.canvas.size,
         state.updateCanvasSize,
         state.setCanvasBackground,
         state.canvas.background,
-      ],
-      shallow
+      ])
     );
 
   return (

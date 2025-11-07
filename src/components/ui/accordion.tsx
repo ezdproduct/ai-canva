@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
-import { FiPlus, FiMinus } from "react-icons/fi";
+import { Plus, Minus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -30,8 +30,8 @@ const AccordionTrigger = React.forwardRef<
       {...props}
     >
       {children}
-      <FiPlus className="h-4 w-4 font-bold closed" />
-      <FiMinus className="h-4 w-4 font-bold hidden opened" />
+      <Plus className="h-4 w-4 font-bold closed" />
+      <Minus className="h-4 w-4 font-bold hidden opened" />
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ));

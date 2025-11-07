@@ -1,4 +1,3 @@
-// import React from 'react';
 import type { IEditorBlockText } from "@/lib/schema";
 import ColorControl from "./components/color-control";
 import ControllerBox from "./components/controller-box";

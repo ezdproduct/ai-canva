@@ -1,9 +1,9 @@
 import * as React from "react";
-import { HiDotsHorizontal } from "react-icons/hi";
-import { AiOutlineEyeInvisible, AiOutlineEye } from "react-icons/ai";
+import { MoreHorizontal, EyeOff, Eye, SettingsIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ModeToggle } from "@/components/mode-toggle";
+import { ApiKeyDialog } from "@/components/api-key-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,7 +22,9 @@ import {
 import type { IEditorBlocks } from "@/lib/schema";
 import { BlockIcon } from "../utils";
 import { useEditorStore } from "../use-editor";
-import { shallow } from "zustand/shallow";
+import { useShallow } from "zustand/react/shallow";
+import { useOrderedBlocks } from "../hooks/use-ordered-blocks";
+import { Button } from "@/components/ui/button";
 
 interface BlockItemProps extends React.HTMLAttributes<HTMLDivElement> {
   block: IEditorBlocks;
@@ -167,7 +169,7 @@ const BlockItem = React.forwardRef<HTMLDivElement, BlockItemProps>(
                 handleSelect();
               }}
             >
-              <HiDotsHorizontal />
+              <MoreHorizontal />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-52">
@@ -181,9 +183,9 @@ const BlockItem = React.forwardRef<HTMLDivElement, BlockItemProps>(
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onToggleVisibility?.(block.id)}>
               {block.visible ? (
-                <AiOutlineEyeInvisible className="mr-2 h-5 w-5" />
+                <EyeOff className="mr-2 h-5 w-5" />
               ) : (
-                <AiOutlineEye className="mr-2 h-5 w-5" />
+                <Eye className="mr-2 h-5 w-5" />
               )}
               {block.visible ? "Hide" : "Show"}
             </DropdownMenuItem>
@@ -214,16 +216,10 @@ const BlockItem = React.forwardRef<HTMLDivElement, BlockItemProps>(
 BlockItem.displayName = "BlockItem";
 
 function EditorLeftSide() {
-  const blocks = useEditorStore(
-    (state) =>
-      state.blockOrder.map((id) => state.blocksById[id]).filter(Boolean),
-    (prev, next) =>
-      prev.length === next.length &&
-      prev.every((value, index) => value === next[index])
-  );
+  const [showApiKeyDialog, setShowApiKeyDialog] = React.useState(false);
+  const blocks = useOrderedBlocks();
   const [selectedIds, setSelectedIds] = useEditorStore(
-    (state) => [state.selectedIds, state.setSelectedIds],
-    shallow
+    useShallow((state) => [state.selectedIds, state.setSelectedIds])
   );
   const [
     setHoveredId,
@@ -236,7 +232,7 @@ function EditorLeftSide() {
     bringToTopBlock,
     bringToBackBlock,
   ] = useEditorStore(
-    (state) => [
+    useShallow((state) => [
       state.setHoveredId,
       state.updateBlockValues,
       state.duplicateBlock,
@@ -246,8 +242,7 @@ function EditorLeftSide() {
       state.bringBackwardBlock,
       state.bringToTopBlock,
       state.bringToBackBlock,
-    ],
-    shallow
+    ])
   );
 
   const handleSelect = React.useCallback(
@@ -261,7 +256,7 @@ function EditorLeftSide() {
   );
 
   return (
-    <div className="editor-left-side fixed left-3 top-3 bottom-3 z-20 flex w-64 flex-col border border-border/50 bg-background/95 backdrop-blur shadow-xl rounded-[1.25rem] overflow-hidden">
+    <div className="editor-left-side fixed left-3 top-3 bottom-3 z-20 hidden md:flex w-64 flex-col border border-border/50 bg-background/95 backdrop-blur shadow-xl rounded-[1.25rem] overflow-hidden">
       <p className="p-4 pb-3 text-sm font-semibold">Layers</p>
       <ScrollArea className="flex-1">
         {blocks.map((block) => (
@@ -283,8 +278,23 @@ function EditorLeftSide() {
         ))}
       </ScrollArea>
       <div className="border-t border-border p-2 flex items-center justify-between gap-2">
-        <ModeToggle />
+        <div />
+        <div className="flex items-center gap-2">
+          <ModeToggle />
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-10"
+            onClick={() => setShowApiKeyDialog(true)}
+          >
+            <SettingsIcon className="size-5" />
+          </Button>
+        </div>
       </div>
+      <ApiKeyDialog
+        open={showApiKeyDialog}
+        onOpenChange={setShowApiKeyDialog}
+      />
     </div>
   );
 }

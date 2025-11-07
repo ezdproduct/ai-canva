@@ -1,76 +1,53 @@
-import { useMemo } from 'react';
-import { useEditorStore, type EditorStore, selectOrderedBlocks } from '../use-editor';
-import { shallow } from 'zustand/shallow';
-
-type CanvasStoreSlice = {
-  blocks: ReturnType<typeof selectOrderedBlocks>;
-  selectedIds: EditorStore['selectedIds'];
-  hoveredId: EditorStore['hoveredId'];
-  mode: EditorStore['canvas']['mode'];
-  isTextEditing: EditorStore['canvas']['isTextEditing'];
-  zoom: EditorStore['canvas']['zoom'];
-  stagePosition: EditorStore['canvas']['stagePosition'];
-  containerSize: EditorStore['canvas']['containerSize'];
-  size: EditorStore['canvas']['size'];
-  background: EditorStore['canvas']['background'];
-};
-
-type CanvasStoreActions = Pick<
-  EditorStore,
-  | 'setSelectedIds'
-  | 'setHoveredId'
-  | 'setStage'
-  | 'setStageZoom'
-  | 'setStagePosition'
-  | 'setCanvasContainerSize'
-  | 'setIsTextEditing'
-  | 'setMode'
-  | 'addFrameBlock'
-  | 'addTextBlock'
-  | 'deleteSelectedBlocks'
-  | 'setBlockPosition'
-  | 'updateBlockValues'
->;
-
-const selectCanvasSlice = (state: EditorStore): CanvasStoreSlice => ({
-  blocks: selectOrderedBlocks(state),
-  selectedIds: state.selectedIds,
-  hoveredId: state.hoveredId,
-  mode: state.canvas.mode,
-  isTextEditing: state.canvas.isTextEditing,
-  zoom: state.canvas.zoom,
-  stagePosition: state.canvas.stagePosition,
-  containerSize: state.canvas.containerSize,
-  size: state.canvas.size,
-  background: state.canvas.background,
-});
-
-const selectCanvasActions = (state: EditorStore): CanvasStoreActions => ({
-  setSelectedIds: state.setSelectedIds,
-  setHoveredId: state.setHoveredId,
-  setStage: state.setStage,
-  setStageZoom: state.setStageZoom,
-  setStagePosition: state.setStagePosition,
-  setCanvasContainerSize: state.setCanvasContainerSize,
-  setIsTextEditing: state.setIsTextEditing,
-  setMode: state.setMode,
-  addFrameBlock: state.addFrameBlock,
-  addTextBlock: state.addTextBlock,
-  deleteSelectedBlocks: state.deleteSelectedBlocks,
-  setBlockPosition: state.setBlockPosition,
-  updateBlockValues: state.updateBlockValues,
-});
+import { useMemo } from "react";
+import { useEditorStore } from "../use-editor";
+import { useShallow } from "zustand/react/shallow";
+import { useOrderedBlocks } from "./use-ordered-blocks";
 
 export const useCanvasStore = () => {
-  const state = useEditorStore(selectCanvasSlice, shallow);
-  const actions = useEditorStore(selectCanvasActions, shallow);
+  // Use the reusable hook for stable blocks reference
+  const blocks = useOrderedBlocks();
 
-  // shallow already handles referential stability; memo here to emphasize combined return
+  // Select other state with useShallow
+  const state = useEditorStore(
+    useShallow((s) => ({
+      selectedIds: s.selectedIds,
+      hoveredId: s.hoveredId,
+      mode: s.canvas.mode,
+      isTextEditing: s.canvas.isTextEditing,
+      zoom: s.canvas.zoom,
+      stagePosition: s.canvas.stagePosition,
+      containerSize: s.canvas.containerSize,
+      size: s.canvas.size,
+      background: s.canvas.background,
+    }))
+  );
+
+  // Select actions - these are stable function references
+  const actions = useEditorStore(
+    useShallow((s) => ({
+      setSelectedIds: s.setSelectedIds,
+      setHoveredId: s.setHoveredId,
+      setStage: s.setStage,
+      setStageZoom: s.setStageZoom,
+      setStagePosition: s.setStagePosition,
+      setCanvasContainerSize: s.setCanvasContainerSize,
+      setIsTextEditing: s.setIsTextEditing,
+      setMode: s.setMode,
+      addFrameBlock: s.addFrameBlock,
+      addTextBlock: s.addTextBlock,
+      deleteSelectedBlocks: s.deleteSelectedBlocks,
+      setBlockPosition: s.setBlockPosition,
+      updateBlockValues: s.updateBlockValues,
+    }))
+  );
+
+  // Combine with stable blocks reference
   return useMemo(
     () => ({
+      blocks,
       ...state,
       ...actions,
     }),
-    [state, actions]
+    [blocks, state, actions]
   );
 };

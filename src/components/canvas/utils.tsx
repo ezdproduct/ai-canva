@@ -1,5 +1,4 @@
 import { BoxIcon, ImageIcon, TextIcon } from "@radix-ui/react-icons";
-import { useEffect, useState } from "react";
 import type { IEditorBlockType } from "@/lib/schema";
 
 export function BlockIcon(type: IEditorBlockType) {
@@ -17,25 +16,6 @@ export function BlockIcon(type: IEditorBlockType) {
 
 
 export const blockNodeId = (blockId: string) => `block-${blockId}`;
-
-export const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 900);
-    };
-
-    handleResize(); // Check on mount
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
-
-  return isMobile;
-};
 
 export const calculateDefaultZoom = (
   canvasWidth: number,

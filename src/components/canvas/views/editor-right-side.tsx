@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import LayoutController from "../controls/layout-controller";
@@ -8,21 +9,22 @@ import { useEditorStore } from "../use-editor";
 import type { IEditorBlockText } from "@/lib/schema";
 
 function EditorRightSide({ className }: { className?: string }) {
-  const [, activeBlock] = useEditorStore(
-    (state) => {
-      if (state.selectedIds.length === 1) {
-        const id = state.selectedIds[0];
-        return [id, state.blocksById[id] ?? null] as const;
-      }
-      return [null, null] as const;
-    },
-    (prev, next) => prev[0] === next[0] && prev[1] === next[1]
-  );
+  // Select separately to avoid creating new array references
+  const selectedIds = useEditorStore((state) => state.selectedIds);
+  const blocksById = useEditorStore((state) => state.blocksById);
+
+  // Compute active block with stable reference
+  const activeBlock = useMemo(() => {
+    if (selectedIds.length === 1) {
+      return blocksById[selectedIds[0]] ?? null;
+    }
+    return null;
+  }, [selectedIds, blocksById]);
   const blockType = activeBlock?.type ?? null;
   return (
     <div
       className={cn(
-        "fixed right-3 top-3 bottom-3 z-20 flex w-64 flex-col border border-border/50 bg-background/95 backdrop-blur shadow-xl rounded-[1.25rem] overflow-hidden",
+        "fixed right-3 top-3 bottom-3 z-20 hidden md:flex w-64 flex-col border border-border/50 bg-background/95 backdrop-blur shadow-xl rounded-[1.25rem] overflow-hidden",
         className
       )}
     >
