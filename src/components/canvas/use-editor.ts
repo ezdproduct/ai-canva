@@ -37,7 +37,7 @@ type HistoryEntry = Pick<Template, "blocks" | "size" | "background">;
 interface EditorCanvasState {
   size: IEditorSize;
   background?: string;
-  mode: "move" | "select";
+  mode: "move" | "select" | "text" | "frame" | "arrow" | "image";
   isTextEditing: boolean;
   zoom: number;
   stagePosition: { x: number; y: number };
@@ -56,12 +56,13 @@ interface EditorState {
     redo: HistoryEntry[];
   };
   stage: Konva.Stage | null;
+  pendingImageData: { url: string; width: number; height: number } | null;
 }
 
 interface EditorActions {
   setStage: (stage: Konva.Stage | null) => void;
   setSelectedIds: (ids: string[]) => void;
-  setMode: (mode: "move" | "select") => void;
+  setMode: (mode: "move" | "select" | "text" | "frame" | "arrow" | "image") => void;
   setIsTextEditing: (value: boolean) => void;
   setStageZoom: (zoom: number) => void;
   setStagePosition: (position: { x: number; y: number }) => void;
@@ -70,6 +71,7 @@ interface EditorActions {
   updateCanvasSize: (size: Partial<IEditorSize>) => void;
   setCanvasBackground: (background: string | undefined) => void;
   setHoveredId: (id: string | null) => void;
+  setPendingImageData: (data: { url: string; width: number; height: number } | null) => void;
   addTextBlock: () => void;
   addFrameBlock: () => void;
   addImageBlock: (args: { url: string; width: number; height: number }) => void;
@@ -177,6 +179,7 @@ const buildInitialState = (template?: Template): EditorState => {
       redo: [],
     },
     stage: null,
+    pendingImageData: null,
   };
 };
 
@@ -230,7 +233,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       return {
         ...state,
         canvas: { ...state.canvas, mode },
-        ...(mode === "move" ? { selectedIds: [] } : {}),
+        selectedIds: [],
+        hoveredId: null,
       };
     });
   },
@@ -281,6 +285,13 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     set((state) =>
       state.hoveredId === id ? state : { ...state, hoveredId: id }
     );
+  },
+
+  setPendingImageData: (data) => {
+    set((state) => ({
+      ...state,
+      pendingImageData: data,
+    }));
   },
 
   setCanvasContainerSize: (size) => {

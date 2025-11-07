@@ -36,6 +36,7 @@ export const useCanvasStore = () => {
       addFrameBlock: s.addFrameBlock,
       addTextBlock: s.addTextBlock,
       addArrowBlock: s.addArrowBlock,
+      addImageBlock: s.addImageBlock,
       deleteSelectedBlocks: s.deleteSelectedBlocks,
       setBlockPosition: s.setBlockPosition,
       updateBlockValues: s.updateBlockValues,

@@ -13,10 +13,7 @@ function EditorHeader({ className }: { className?: string }) {
   const [mode, setMode] = useEditorStore(
     useShallow((state) => [state.canvas.mode, state.setMode])
   );
-  const addTextBlock = useEditorStore((state) => state.addTextBlock);
-  const addFrameBlock = useEditorStore((state) => state.addFrameBlock);
-  const addImageBlock = useEditorStore((state) => state.addImageBlock);
-  const addArrowBlock = useEditorStore((state) => state.addArrowBlock);
+  const setPendingImageData = useEditorStore((state) => state.setPendingImageData);
   const [handleUndo, handleRedo, undoCount, redoCount] = useEditorStore(
     useShallow((state) => [
       state.handleUndo,
@@ -57,7 +54,8 @@ function EditorHeader({ className }: { className?: string }) {
           buttons={[
             {
               children: BlockIcon("text"),
-              onClick: () => addTextBlock(),
+              onClick: () => setMode("text"),
+              isActive: mode === "text",
               label: "Add Text",
               hotkey: "T",
             },
@@ -68,17 +66,20 @@ function EditorHeader({ className }: { className?: string }) {
                   imageInputRef.current.click();
                 }
               },
+              isActive: mode === "image",
               label: "Add Image",
             },
             {
               children: BlockIcon("frame"),
-              onClick: () => addFrameBlock(),
+              onClick: () => setMode("frame"),
+              isActive: mode === "frame",
               label: "Add Frame",
               hotkey: "F",
             },
             {
               children: BlockIcon("arrow"),
-              onClick: () => addArrowBlock(),
+              onClick: () => setMode("arrow"),
+              isActive: mode === "arrow",
               label: "Add Arrow",
               hotkey: "A",
             },
@@ -123,11 +124,12 @@ function EditorHeader({ className }: { className?: string }) {
               const img = new Image();
               img.src = reader.result as string;
               img.onload = () => {
-                addImageBlock({
+                setPendingImageData({
                   url: img.src,
                   width: img.width,
                   height: img.height,
                 });
+                setMode("image");
               };
             };
             reader.readAsDataURL(file);

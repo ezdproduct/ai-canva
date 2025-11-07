@@ -2,10 +2,7 @@ import * as React from 'react';
 import { editorStoreApi } from '../use-editor';
 
 interface UseCanvasHotkeysOptions {
-  setMode: (mode: 'move' | 'select') => void;
-  addFrameBlock: () => void;
-  addTextBlock: () => void;
-  addArrowBlock: () => void;
+  setMode: (mode: 'move' | 'select' | 'text' | 'frame' | 'arrow' | 'image') => void;
   deleteSelectedBlocks: () => void;
 }
 
@@ -23,9 +20,9 @@ const isEditableTarget = (target: EventTarget | null) => {
   return Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
 };
 
-export const useCanvasHotkeys = ({ setMode, addFrameBlock, addTextBlock, addArrowBlock, deleteSelectedBlocks }: UseCanvasHotkeysOptions) => {
+export const useCanvasHotkeys = ({ setMode, deleteSelectedBlocks }: UseCanvasHotkeysOptions) => {
   const spacePressedRef = React.useRef(false);
-  const spacePrevModeRef = React.useRef<'move' | 'select' | null>(null);
+  const spacePrevModeRef = React.useRef<'move' | 'select' | 'text' | 'frame' | 'arrow' | 'image' | null>(null);
 
   React.useEffect(() => {
     const store = editorStoreApi;
@@ -89,19 +86,19 @@ export const useCanvasHotkeys = ({ setMode, addFrameBlock, addTextBlock, addArro
       }
 
       if (key === 'f') {
-        addFrameBlock();
+        setMode('frame');
         event.preventDefault();
         return;
       }
 
       if (key === 't') {
-        addTextBlock();
+        setMode('text');
         event.preventDefault();
         return;
       }
 
       if (key === 'a') {
-        addArrowBlock();
+        setMode('arrow');
         event.preventDefault();
         return;
       }
@@ -146,5 +143,5 @@ export const useCanvasHotkeys = ({ setMode, addFrameBlock, addTextBlock, addArro
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('blur', resetSpaceMode);
     };
-  }, [addFrameBlock, addTextBlock, addArrowBlock, deleteSelectedBlocks, setMode]);
+  }, [deleteSelectedBlocks, setMode]);
 };
