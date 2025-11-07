@@ -1,9 +1,6 @@
 import type { UIMessage, UIMessageStreamWriter } from "ai";
 import { tool } from "ai";
-import {
-  templateSchema,
-  frameBlockSchemaWithoutId,
-} from "@/lib/schema";
+import { templateSchema, frameBlockSchemaWithoutId } from "@/lib/schema";
 import { generateId } from "@/lib/id-generator";
 
 import type { DataPart } from "../messages/data-parts";
@@ -34,6 +31,7 @@ export const generateFrameBlock = ({ writer }: Params) =>
         id: toolCallId,
         type: "data-generate-frame-block",
         data: {
+          // @ts-expect-error - This is a valid data part
           "generate-frame-block": {
             block: blockWithId,
             status: "done",

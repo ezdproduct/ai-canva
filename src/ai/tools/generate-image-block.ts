@@ -1,9 +1,6 @@
 import type { UIMessage, UIMessageStreamWriter } from "ai";
 import { tool } from "ai";
-import {
-  templateSchema,
-  imageBlockSchemaWithoutId,
-} from "@/lib/schema";
+import { templateSchema, imageBlockSchemaWithoutId } from "@/lib/schema";
 import { generateId } from "@/lib/id-generator";
 
 import type { DataPart } from "../messages/data-parts";
@@ -34,6 +31,7 @@ export const generateImageBlock = ({ writer }: Params) =>
         id: toolCallId,
         type: "data-generate-image-block",
         data: {
+          // @ts-expect-error - This is a valid data part
           "generate-image-block": {
             block: blockWithId,
             status: "done",
