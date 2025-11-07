@@ -1291,6 +1291,35 @@ function EditorCanvas() {
     [setBlockPosition, blocks]
   );
 
+  const handleTransform = React.useCallback(() => {
+    const transformer = transformerRef.current;
+    if (!transformer) {
+      return;
+    }
+    const nodes = transformer.nodes();
+    nodes.forEach((node) => {
+      const id = node.id().replace("block-", "");
+      const block = blocks.find((b) => b.id === id);
+      if (!block) {
+        return;
+      }
+
+      // For text blocks, update width/height in real-time to prevent deformation
+      if (block.type === "text") {
+        const scaleX = node.scaleX();
+        const scaleY = node.scaleY();
+        const newWidth = Math.max(1, node.width() * scaleX);
+        const newHeight = Math.max(1, node.height() * scaleY);
+
+        // Update the node's width/height directly to prevent text deformation
+        node.width(newWidth);
+        node.height(newHeight);
+        node.scaleX(1);
+        node.scaleY(1);
+      }
+    });
+  }, [blocks]);
+
   const handleTransformEnd = React.useCallback(() => {
     const transformer = transformerRef.current;
     if (!transformer) {
@@ -1303,9 +1332,28 @@ function EditorCanvas() {
       if (!block) {
         return;
       }
+      const rotation = node.rotation();
+
+      // For text blocks, width/height were already updated in handleTransform
+      // so we can use them directly (scale is already 1)
+      // We also reset scaleX/scaleY to 1 to prevent deformation
+      if (block.type === "text") {
+        const width = Math.max(1, node.width());
+        const height = Math.max(1, node.height());
+        updateBlockValues(id, {
+          x: node.x(),
+          y: node.y(),
+          width,
+          height,
+          rotation,
+          scaleX: 1,
+          scaleY: 1,
+        });
+        return;
+      }
+
       const scaleX = node.scaleX();
       const scaleY = node.scaleY();
-      const rotation = node.rotation();
       const width = Math.max(1, node.width() * scaleX);
       const height = Math.max(1, node.height() * scaleY);
       node.scaleX(1);
@@ -1604,6 +1652,7 @@ function EditorCanvas() {
             <Transformer
               ref={transformerRef}
               rotateEnabled
+              onTransform={handleTransform}
               onTransformEnd={handleTransformEnd}
               enabledAnchors={[
                 "top-left",
