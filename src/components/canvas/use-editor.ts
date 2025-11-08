@@ -1061,11 +1061,11 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
 
   downloadImage: async () => {
     const state = get();
-    const { stage } = state;
+    const { stage, selectedIds } = state;
     if (!stage) {
       return;
     }
-    await downloadStageAsImage(stage, blocksArray(state));
+    await downloadStageAsImage(stage, blocksArray(state), selectedIds);
   },
 
   exportToJson: () => {

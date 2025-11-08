@@ -13,7 +13,9 @@ function EditorHeader({ className }: { className?: string }) {
   const [mode, setMode] = useEditorStore(
     useShallow((state) => [state.canvas.mode, state.setMode])
   );
-  const setPendingImageData = useEditorStore((state) => state.setPendingImageData);
+  const setPendingImageData = useEditorStore(
+    (state) => state.setPendingImageData
+  );
   const [handleUndo, handleRedo, undoCount, redoCount] = useEditorStore(
     useShallow((state) => [
       state.handleUndo,
@@ -114,7 +116,10 @@ function EditorHeader({ className }: { className?: string }) {
           className="hidden md:flex"
         />
         <div className="hidden md:block w-px h-6 bg-border mx-1" />
-        <Button className="hidden md:flex gap-2 rounded-xl h-10 px-6" onClick={downloadImage}>
+        <Button
+          className="hidden md:flex gap-2 rounded-xl h-10 px-6"
+          onClick={downloadImage}
+        >
           <Download /> Export
         </Button>
       </div>

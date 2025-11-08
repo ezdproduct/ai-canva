@@ -1,4 +1,9 @@
-import { BoxIcon, ImageIcon, TextIcon, ArrowRightIcon } from "@radix-ui/react-icons";
+import {
+  BoxIcon,
+  ImageIcon,
+  TextIcon,
+  ArrowRightIcon,
+} from "@radix-ui/react-icons";
 import { Code as CodeIcon } from "lucide-react";
 import type { IEditorBlockType } from "@/lib/schema";
 
@@ -18,7 +23,6 @@ export function BlockIcon(type: IEditorBlockType) {
       return <BoxIcon />;
   }
 }
-
 
 export const blockNodeId = (blockId: string) => `block-${blockId}`;
 
@@ -56,7 +60,7 @@ const splitGradientArgs = (input: string) => {
   let buffer = "";
   let depth = 0;
   for (const char of input) {
-    if (char === "(" ) {
+    if (char === "(") {
       depth += 1;
       buffer += char;
       continue;
@@ -80,7 +84,9 @@ const splitGradientArgs = (input: string) => {
 };
 
 const parseStop = (value: string, index: number, total: number) => {
-  const colorMatch = value.match(/(rgba?\([^\)]+\)|#[0-9a-fA-F]{3,8}|hsl\([^\)]+\)|hsla\([^\)]+\)|[a-zA-Z]+)/);
+  const colorMatch = value.match(
+    /(rgba?\([^\)]+\)|#[0-9a-fA-F]{3,8}|hsl\([^\)]+\)|hsla\([^\)]+\)|[a-zA-Z]+)/
+  );
   const color = colorMatch ? colorMatch[0].trim() : value.trim();
   const remainder = value.replace(color, "").trim();
   let offset: number;
@@ -151,7 +157,9 @@ export const parseLinearGradientFill = (
     }
   }
   const stops = parts.length ? parts : [first];
-  const parsedStops = stops.map((stop, index) => parseStop(stop, index, stops.length));
+  const parsedStops = stops.map((stop, index) =>
+    parseStop(stop, index, stops.length)
+  );
   const colorStops: (number | string)[] = [];
   parsedStops.forEach((stop) => {
     colorStops.push(stop.offset, stop.color);
