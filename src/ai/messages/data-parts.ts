@@ -16,4 +16,13 @@ export type DataPart = {
     block: z.infer<typeof blockSchema>;
     status: "done";
   };
+  "generate-html"?: {
+    html: string;
+    status: "done";
+  };
+  "add-html-to-canvas"?: {
+    block: z.infer<typeof blockSchema>;
+    status: "loading" | "done";
+    updateBlockId?: string; // ID of existing block to update (if loading)
+  };
 };

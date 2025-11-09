@@ -1,15 +1,22 @@
 import type { InferUITools, UIMessage, UIMessageStreamWriter } from "ai";
 
 import type { DataPart } from "../messages/data-parts";
+import type { SelectionBounds } from "@/lib/types";
 import { generateFrameBlock } from "./generate-frame-block";
 import { generateImageBlock } from "./generate-image-block";
 import { generateTextBlock } from "./generate-text-block";
+import { generateHTML } from "./generate-html-block";
+import { addHTMLToCanvas } from "./add-html-to-canvas";
 
-type Params = {
+type WriterParams = {
   writer: UIMessageStreamWriter<UIMessage<never, DataPart>>;
 };
 
-export function tools({ writer }: Params) {
+type BuildParams = WriterParams & {
+  selectionBounds?: SelectionBounds;
+};
+
+export function generateTools({ writer }: WriterParams) {
   return {
     generateTextBlock: generateTextBlock({ writer }),
     generateFrameBlock: generateFrameBlock({ writer }),
@@ -17,4 +24,12 @@ export function tools({ writer }: Params) {
   };
 }
 
-export type ToolSet = InferUITools<ReturnType<typeof tools>>;
+export function buildTools({ writer, selectionBounds }: BuildParams) {
+  return {
+    generateHTML: generateHTML({ writer, selectionBounds }),
+    addHTMLToCanvas: addHTMLToCanvas({ writer }),
+  };
+}
+
+export type GenerateToolSet = InferUITools<ReturnType<typeof generateTools>>;
+export type BuildToolSet = InferUITools<ReturnType<typeof buildTools>>;

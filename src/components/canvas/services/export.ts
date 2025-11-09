@@ -1,5 +1,9 @@
 import type Konva from "konva";
-import type { IEditorBlocks, IEditorSize, IEditorBlockArrow } from "@/lib/schema";
+import type {
+  IEditorBlocks,
+  IEditorSize,
+  IEditorBlockArrow,
+} from "@/lib/schema";
 import { loadFontsForBlocks } from "./fonts";
 import {
   calculateArrowBounds,
@@ -37,7 +41,7 @@ type Bounds = {
  * Handles all block types including arrows which require special calculation.
  * Includes EXPORT_PADDING around the bounds.
  */
-function calculateSelectedBlocksBounds(
+export function calculateSelectedBlocksBounds(
   blocks: IEditorBlocks[],
   selectedIds: string[]
 ): Bounds | null {
@@ -200,24 +204,24 @@ function hideNonSelectedElements(
 ): () => void {
   const visibilityStates = new Map<Konva.Node, boolean>();
   const layerVisibilityStates = new Map<Konva.Layer, boolean>();
-  
+
   // Hide transformer
   const transformer = stage.findOne("Transformer");
   if (transformer) {
     visibilityStates.set(transformer, transformer.visible());
     transformer.visible(false);
   }
-  
+
   // Hide layers that contain UI-only elements (hover outlines, selection outlines, placement previews)
   // Also hide the layer containing the transformer
   const layers = stage.getLayers();
   layers.forEach((layer) => {
     // Check if this layer contains any canvas-node elements
     const hasContentNodes = layer.find("canvas-node").length > 0;
-    
+
     // Check if it has the transformer
     const hasTransformer = layer.find("Transformer").length > 0;
-    
+
     // Hide transformer layer
     if (hasTransformer) {
       layerVisibilityStates.set(layer, layer.visible());
@@ -232,7 +236,7 @@ function hideNonSelectedElements(
         const fill = (rect as Konva.Rect).fill();
         return fill && fill !== "transparent";
       });
-      
+
       // Only hide if it's not the background layer
       if (!isBackgroundLayer) {
         layerVisibilityStates.set(layer, layer.visible());
@@ -240,37 +244,37 @@ function hideNonSelectedElements(
       }
     }
   });
-  
+
   // Hide all blocks that aren't selected
   // Use Set for O(1) lookup performance
   const selectedIdsSet = new Set(selectedIds);
-  
+
   // Find all nodes with IDs matching block-* pattern
   blocks.forEach((block) => {
     const nodeId = blockNodeId(block.id);
     const node = stage.findOne(`#${nodeId}`);
-    
+
     if (node) {
       const isSelected = selectedIdsSet.has(block.id);
       const blockIsVisible = block.visible !== false;
-      
+
       // Store original visibility state
       visibilityStates.set(node, node.visible());
-      
+
       // Show only if selected AND the block's visible property is true
       node.visible(isSelected && blockIsVisible);
     }
   });
-  
+
   // Hide any Rect elements that are hover/selection outlines
   // These are typically Rect elements with stroke but no fill
   const allRects = stage.find("Rect");
   const selectedBlockIds = new Set(selectedIds);
-  
+
   allRects.forEach((rect) => {
     const rectName = rect.name();
     const rectId = rect.id();
-    
+
     // Skip if it's part of a selected block (check if ID matches block-* pattern)
     const isBlockRect = rectId.startsWith("block-");
     if (isBlockRect) {
@@ -279,12 +283,12 @@ function hideNonSelectedElements(
         return; // This is part of a selected block, keep it visible
       }
     }
-    
+
     // If it's not a canvas-node, it might be an outline
     if (!rectName || rectName !== "canvas-node") {
       const fill = (rect as Konva.Rect).fill();
       const stroke = (rect as Konva.Rect).stroke();
-      
+
       // Hide outlines (has stroke, no fill or transparent fill)
       // Also hide if it's the background canvas rect (we want to keep that, but it has a fill)
       if (stroke && (!fill || fill === "transparent")) {
@@ -293,10 +297,10 @@ function hideNonSelectedElements(
       }
     }
   });
-  
+
   // Force redraw and wait for it to complete
   stage.getLayers().forEach((layer) => layer.batchDraw());
-  
+
   // Return restore function
   return () => {
     visibilityStates.forEach((wasVisible, node) => {
@@ -313,7 +317,7 @@ function hideNonSelectedElements(
  * Captures selected blocks as an image data URL.
  * If selectedIds is provided and not empty, only selected blocks are captured.
  * Otherwise, captures the entire canvas.
- * 
+ *
  * This is the main reusable function for capturing canvas images,
  * suitable for both export and sending to AI backend.
  */
@@ -383,8 +387,12 @@ export const downloadStageAsImage = async (
   blocks: IEditorBlocks[],
   selectedIds: string[] = []
 ) => {
-  const dataUrl = await captureSelectedBlocksAsImage(stage, blocks, selectedIds);
-  
+  const dataUrl = await captureSelectedBlocksAsImage(
+    stage,
+    blocks,
+    selectedIds
+  );
+
   if (!dataUrl) {
     return;
   }

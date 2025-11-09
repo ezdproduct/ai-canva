@@ -5,31 +5,37 @@ import {
   stepCountIs,
   streamText,
 } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
 
 import type { ChatUIMessage } from "../messages/types";
-import { tools } from "../tools";
-import prompt from "./stream-chat-response-prompt.md";
+import type { SelectionBounds } from "@/lib/types";
+import { generateTools, buildTools } from "../tools";
+import generatePrompt from "./stream-chat-response-prompt.md";
+import buildPrompt from "./stream-chat-response-build-prompt.md";
 
 export const streamChatResponse = (
   messages: ChatUIMessage[],
-  openaiApiKey?: string
+  openaiApiKey?: string,
+  mode: "generate" | "build" = "generate",
+  selectionBounds?: SelectionBounds
 ) => {
-  const openai = createOpenAI({
-    apiKey: openaiApiKey || process.env.OPENAI_API_KEY,
-  });
+  const systemPrompt = mode === "build" ? buildPrompt : generatePrompt;
 
   return createUIMessageStreamResponse({
     stream: createUIMessageStream({
       originalMessages: messages,
       execute: ({ writer }) => {
+        const tools =
+          mode === "build"
+            ? buildTools({ writer, selectionBounds })
+            : generateTools({ writer });
+
         const result = streamText({
           model: "xai/grok-4-fast-non-reasoning",
-          system: prompt,
+          system: systemPrompt,
           messages: convertToModelMessages(messages),
           stopWhen: stepCountIs(20),
           toolChoice: "required",
-          tools: tools({ writer }),
+          tools,
           onError: (error) => {
             console.error("Error communicating with AI");
             console.error(JSON.stringify(error, null, 2));
