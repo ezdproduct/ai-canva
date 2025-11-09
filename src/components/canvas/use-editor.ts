@@ -37,7 +37,7 @@ type HistoryEntry = Pick<Template, "blocks" | "size" | "background">;
 interface EditorCanvasState {
   size: IEditorSize;
   background?: string;
-  mode: "move" | "select" | "text" | "frame" | "arrow" | "image" | "html";
+  mode: "move" | "select" | "text" | "frame" | "arrow" | "image";
   isTextEditing: boolean;
   zoom: number;
   stagePosition: { x: number; y: number };
@@ -63,7 +63,9 @@ interface EditorState {
 interface EditorActions {
   setStage: (stage: Konva.Stage | null) => void;
   setSelectedIds: (ids: string[]) => void;
-  setMode: (mode: "move" | "select" | "text" | "frame" | "arrow" | "image" | "html") => void;
+  setMode: (
+    mode: "move" | "select" | "text" | "frame" | "arrow" | "image"
+  ) => void;
   setIsTextEditing: (value: boolean) => void;
   setStageZoom: (zoom: number) => void;
   setStagePosition: (position: { x: number; y: number }) => void;
@@ -72,7 +74,9 @@ interface EditorActions {
   updateCanvasSize: (size: Partial<IEditorSize>) => void;
   setCanvasBackground: (background: string | undefined) => void;
   setHoveredId: (id: string | null) => void;
-  setPendingImageData: (data: { url: string; width: number; height: number } | null) => void;
+  setPendingImageData: (
+    data: { url: string; width: number; height: number } | null
+  ) => void;
   addTextBlock: () => void;
   addFrameBlock: () => void;
   addImageBlock: (args: { url: string; width: number; height: number }) => void;
@@ -555,10 +559,10 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     set((state) => {
       const snapshot = createSnapshot(state);
       const blocks = blocksArray(state);
-      
+
       // Default arrow: horizontal, 200px long, pointing right
       const points: [number, number, number, number] = [0, 0, 200, 0];
-      
+
       // Create a temporary block to calculate bounds
       const tempBlock: IEditorBlockArrow = {
         id: "", // Not used for calculation
@@ -580,16 +584,20 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
         visible: true,
         opacity: 100,
       };
-      
+
       const bounds = calculateArrowBounds(tempBlock);
-      
+
       // Calculate centered position for the bounding box
-      const position = calculateViewportCenteredPosition(state, bounds.width, bounds.height);
-      
+      const position = calculateViewportCenteredPosition(
+        state,
+        bounds.width,
+        bounds.height
+      );
+
       // Convert bounding box position to block position (accounting for offset)
       const actualX = position.x - bounds.offsetX;
       const actualY = position.y - bounds.offsetY;
-      
+
       const defaultBlock = ensureBlockDefaults(
         arrowBlockSchema.parse({
           id: generateId(),

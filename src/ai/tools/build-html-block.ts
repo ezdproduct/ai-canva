@@ -24,7 +24,7 @@ export function createLoadingBlock(selectionBounds?: SelectionBounds) {
 
   const block = {
     type: "html" as const,
-    label: "Building...",
+    label: "HTML",
     x,
     y,
     width: LOADING_HTML_BLOCK_WIDTH,
@@ -46,4 +46,3 @@ export function createLoadingBlock(selectionBounds?: SelectionBounds) {
 
   return htmlBlockSchema.parse(block);
 }
-

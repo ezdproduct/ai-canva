@@ -17,10 +17,4 @@ export function generateTools({ writer }: WriterParams) {
   };
 }
 
-// buildTools is no longer needed - HTML blocks are created/updated manually in stream-chat-response.ts
-export function buildTools() {
-  return {};
-}
-
 export type GenerateToolSet = InferUITools<ReturnType<typeof generateTools>>;
-export type BuildToolSet = InferUITools<ReturnType<typeof buildTools>>;

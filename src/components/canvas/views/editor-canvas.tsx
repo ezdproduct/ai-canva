@@ -24,7 +24,6 @@ import {
   frameBlockSchema,
   imageBlockSchema,
   arrowBlockSchema,
-  htmlBlockSchema,
 } from "@/lib/schema";
 import { generateId } from "@/lib/id-generator";
 import ZoomHandler from "./zoomable";
@@ -35,7 +34,11 @@ import {
   groupPositionToBlockPosition,
   scaleArrowPoints,
 } from "../utils/arrow-bounds";
-import { editorStoreApi, selectOrderedBlocks, useEditorStore } from "../use-editor";
+import {
+  editorStoreApi,
+  selectOrderedBlocks,
+  useEditorStore,
+} from "../use-editor";
 import {
   ensureBlockDefaults,
   MAX_IMAGE_DIMENSION,
@@ -430,7 +433,9 @@ const HtmlContent = React.memo(
     // Use a hash of the HTML as key to force iframe re-render when content changes
     const htmlKey = React.useMemo(() => {
       // Simple hash for key - forces re-render when HTML changes
-      return html.length + (html.substring(0, 100).replace(/\s/g, "").length % 1000);
+      return (
+        html.length + (html.substring(0, 100).replace(/\s/g, "").length % 1000)
+      );
     }, [html]);
 
     return (
@@ -618,7 +623,7 @@ const DEFAULT_BLOCK_SIZES = {
 const calculateBlockPlacement = (
   start: PointerPosition,
   current: PointerPosition | null,
-  blockType: "text" | "frame" | "image" | "html",
+  blockType: "text" | "frame" | "image",
   isDrag: boolean,
   pendingImageData?: { url: string; width: number; height: number } | null
 ) => {
@@ -657,9 +662,6 @@ const calculateBlockPlacement = (
     } else if (blockType === "frame") {
       width = DEFAULT_BLOCK_SIZES.frame.width;
       height = DEFAULT_BLOCK_SIZES.frame.height;
-    } else if (blockType === "html") {
-      width = DEFAULT_BLOCK_SIZES.html.width;
-      height = DEFAULT_BLOCK_SIZES.html.height;
     } else if (blockType === "image" && pendingImageData) {
       const scale = Math.min(
         1,
@@ -742,7 +744,7 @@ function PlacementPreview({
   zoom,
   pendingImageData,
 }: {
-  mode: "text" | "frame" | "arrow" | "image" | "html";
+  mode: "text" | "frame" | "arrow" | "image";
   start: PointerPosition;
   current: PointerPosition | null;
   zoom: number;
@@ -785,7 +787,7 @@ function PlacementPreview({
   const placement = calculateBlockPlacement(
     start,
     current,
-    mode as "text" | "frame" | "image" | "html",
+    mode as "text" | "frame" | "image",
     isDrag,
     pendingImageData
   );
@@ -794,9 +796,9 @@ function PlacementPreview({
     return null;
   }
 
-  const isFrameOrHtml = mode === "frame" || mode === "html";
-  const fillProps = isFrameOrHtml ? { fill: "#ffffff" } : {};
-  const strokeColor = isFrameOrHtml ? "#d1d5db" : "#6366f1";
+  const isFrame = mode === "frame";
+  const fillProps = isFrame ? { fill: "#ffffff" } : {};
+  const strokeColor = isFrame ? "#d1d5db" : "#6366f1";
 
   return (
     <Rect
@@ -807,8 +809,8 @@ function PlacementPreview({
       stroke={strokeColor}
       strokeWidth={1 / zoom}
       dash={[4 / zoom, 4 / zoom]}
-      fill={isFrameOrHtml ? "#ffffff80" : "transparent"}
-      cornerRadius={isFrameOrHtml ? 16 : 0}
+      fill={isFrame ? "#ffffff80" : "transparent"}
+      cornerRadius={isFrame ? 16 : 0}
       listening={false}
       opacity={0.5}
       {...fillProps}
@@ -823,7 +825,9 @@ function EditorCanvas() {
   const selectionStartRef = React.useRef<PointerPosition | null>(null);
   const selectionChangedRef = React.useRef(false);
   const isAltDragRef = React.useRef(false);
-  const originalPositionsRef = React.useRef<Map<string, { x: number; y: number }>>(new Map());
+  const originalPositionsRef = React.useRef<
+    Map<string, { x: number; y: number }>
+  >(new Map());
   const storeApi = editorStoreApi;
 
   const [selectionRect, setSelectionRect] =
@@ -906,7 +910,9 @@ function EditorCanvas() {
     [setStage]
   );
 
-  const copySelectedBlocks = useEditorStore((state) => state.copySelectedBlocks);
+  const copySelectedBlocks = useEditorStore(
+    (state) => state.copySelectedBlocks
+  );
   const pasteBlocks = useEditorStore((state) => state.pasteBlocks);
   const stage = useEditorStore((state) => state.stage);
 
@@ -925,8 +931,7 @@ function EditorCanvas() {
       mode === "text" ||
       mode === "frame" ||
       mode === "arrow" ||
-      mode === "image" ||
-      mode === "html"
+      mode === "image"
     );
   }, [mode]);
 
@@ -1078,77 +1083,6 @@ function EditorCanvas() {
         storeApi.getState().addBlock(defaultBlock);
         setPendingImageData(null);
         storeApi.getState().setPendingImageData(null);
-        setMode("select");
-      } else if (blockType === "html") {
-        // Use shared calculation for consistency
-        const isDrag = !!size;
-        const placement = calculateBlockPlacement(
-          position,
-          endPosition || position,
-          "html",
-          isDrag
-        );
-        if (!placement) return;
-
-        const defaultBlock = ensureBlockDefaults(
-          htmlBlockSchema.parse({
-            id: generateId(),
-            type: "html",
-            label: `HTML ${blocks.length + 1}`,
-            x: placement.x,
-            y: placement.y,
-            width: placement.width,
-            height: placement.height,
-            rotation: 0,
-            scaleX: 1,
-            scaleY: 1,
-            html: `<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body {
-      margin: 0;
-      padding: 8px;
-      font-size: 14px;
-      font-family: system-ui, sans-serif;
-      color: #1f2937;
-    }
-    input {
-      display: block;
-      width: 100%;
-      padding: 4px 8px;
-      margin-top: 8px;
-      border: 1px solid #d1d5db;
-      border-radius: 4px;
-      font-size: 14px;
-      font-family: system-ui, sans-serif;
-      background-color: white;
-      color: #1f2937;
-      box-sizing: border-box;
-    }
-    input:focus {
-      outline: none;
-      border-color: #6366f1;
-      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
-    }
-  </style>
-</head>
-<body>
-  <div>hello world</div>
-  <input />
-</body>
-</html>`,
-            background: "#ffffff",
-            border: {
-              color: "#d1d5db",
-              width: 1,
-            },
-            radius: { tl: 16, tr: 16, br: 16, bl: 16 },
-            visible: true,
-            opacity: 100,
-          } satisfies IEditorBlockHtml)
-        );
-        storeApi.getState().addBlock(defaultBlock);
         setMode("select");
       }
     },
@@ -1499,7 +1433,7 @@ function EditorCanvas() {
         const draggedBlock = blocks.find((b) => b.id === id);
         let offsetX: number;
         let offsetY: number;
-        
+
         if (draggedBlock?.type === "arrow") {
           // For arrows, convert both positions to block coordinates
           const arrowBlock = draggedBlock as IEditorBlockArrow;
@@ -1523,7 +1457,7 @@ function EditorCanvas() {
 
         // Copy all selected blocks
         copySelectedBlocks();
-        
+
         // Calculate the minimum x and y from selected blocks to maintain relative positions
         const selectedBlocks = blocks.filter((b) => selectedIds.includes(b.id));
         const minX = Math.min(...selectedBlocks.map((b) => b.x));
@@ -1836,12 +1770,16 @@ function EditorCanvas() {
                   isAltDragRef.current = true;
                   // Store original positions of all selected blocks
                   // Get current selected IDs from store to ensure we have the latest state
-                  const currentSelectedIds = storeApi.getState().selectedIds.includes(block.id)
+                  const currentSelectedIds = storeApi
+                    .getState()
+                    .selectedIds.includes(block.id)
                     ? storeApi.getState().selectedIds
                     : [block.id];
                   originalPositionsRef.current.clear();
                   currentSelectedIds.forEach((selectedId) => {
-                    const selectedBlock = blocks.find((b) => b.id === selectedId);
+                    const selectedBlock = blocks.find(
+                      (b) => b.id === selectedId
+                    );
                     if (selectedBlock) {
                       if (selectedBlock.type === "arrow") {
                         const arrowBlock = selectedBlock as IEditorBlockArrow;
@@ -1969,7 +1907,7 @@ function EditorCanvas() {
           placementHasMoved &&
           isPlacementMode() ? (
             <PlacementPreview
-              mode={mode as "text" | "frame" | "arrow" | "image" | "html"}
+              mode={mode as "text" | "frame" | "arrow" | "image"}
               start={placementStart}
               current={placementCurrent}
               zoom={zoom}

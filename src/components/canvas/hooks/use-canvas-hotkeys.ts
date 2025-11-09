@@ -1,9 +1,11 @@
-import * as React from 'react';
-import { editorStoreApi } from '../use-editor';
-import type Konva from 'konva';
+import * as React from "react";
+import { editorStoreApi } from "../use-editor";
+import type Konva from "konva";
 
 interface UseCanvasHotkeysOptions {
-  setMode: (mode: 'move' | 'select' | 'text' | 'frame' | 'arrow' | 'image' | 'html') => void;
+  setMode: (
+    mode: "move" | "select" | "text" | "frame" | "arrow" | "image"
+  ) => void;
   deleteSelectedBlocks: () => void;
   copySelectedBlocks: () => void;
   pasteBlocks: (position?: { x: number; y: number }) => void;
@@ -19,10 +21,12 @@ const isEditableTarget = (target: EventTarget | null) => {
     return true;
   }
   const tagName = target.tagName;
-  if (tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT') {
+  if (tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT") {
     return true;
   }
-  return Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
+  return Boolean(
+    target.closest('input, textarea, select, [contenteditable="true"]')
+  );
 };
 
 const getPointerPosition = (stage: Konva.Stage | null) => {
@@ -48,9 +52,18 @@ const toCanvasCoordinates = (
   };
 };
 
-export const useCanvasHotkeys = ({ setMode, deleteSelectedBlocks, copySelectedBlocks, pasteBlocks, stage, zoom }: UseCanvasHotkeysOptions) => {
+export const useCanvasHotkeys = ({
+  setMode,
+  deleteSelectedBlocks,
+  copySelectedBlocks,
+  pasteBlocks,
+  stage,
+  zoom,
+}: UseCanvasHotkeysOptions) => {
   const spacePressedRef = React.useRef(false);
-  const spacePrevModeRef = React.useRef<'move' | 'select' | 'text' | 'frame' | 'arrow' | 'image' | 'html' | null>(null);
+  const spacePrevModeRef = React.useRef<
+    "move" | "select" | "text" | "frame" | "arrow" | "image" | null
+  >(null);
 
   React.useEffect(() => {
     const store = editorStoreApi;
@@ -63,7 +76,7 @@ export const useCanvasHotkeys = ({ setMode, deleteSelectedBlocks, copySelectedBl
       const state = store.getState();
 
       // Handle Cmd+A / Ctrl+A to select all blocks
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'a') {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "a") {
         if (isEditableTarget(event.target) || state.canvas.isTextEditing) {
           return; // Let browser handle select all in input fields
         }
@@ -80,7 +93,7 @@ export const useCanvasHotkeys = ({ setMode, deleteSelectedBlocks, copySelectedBl
       }
 
       // Handle Cmd+C / Ctrl+C to copy selected blocks
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'c') {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "c") {
         if (isEditableTarget(event.target) || state.canvas.isTextEditing) {
           return; // Let browser handle copy in input fields
         }
@@ -92,7 +105,7 @@ export const useCanvasHotkeys = ({ setMode, deleteSelectedBlocks, copySelectedBl
       }
 
       // Handle Cmd+V / Ctrl+V to paste blocks
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'v') {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "v") {
         if (isEditableTarget(event.target) || state.canvas.isTextEditing) {
           return; // Let browser handle paste in input fields
         }
@@ -100,15 +113,16 @@ export const useCanvasHotkeys = ({ setMode, deleteSelectedBlocks, copySelectedBl
           event.preventDefault();
           // Get pointer position on canvas for paste location
           const pointer = getPointerPosition(stage);
-          const pastePosition = pointer && stage
-            ? toCanvasCoordinates(stage, pointer, zoom)
-            : undefined;
+          const pastePosition =
+            pointer && stage
+              ? toCanvasCoordinates(stage, pointer, zoom)
+              : undefined;
           pasteBlocks(pastePosition);
         }
         return;
       }
 
-      if (event.code === 'Space') {
+      if (event.code === "Space") {
         if (event.metaKey || event.ctrlKey || event.altKey) {
           return;
         }
@@ -119,8 +133,8 @@ export const useCanvasHotkeys = ({ setMode, deleteSelectedBlocks, copySelectedBl
         if (!spacePressedRef.current) {
           spacePressedRef.current = true;
           spacePrevModeRef.current = state.canvas.mode;
-          if (state.canvas.mode !== 'move') {
-            setMode('move');
+          if (state.canvas.mode !== "move") {
+            setMode("move");
           }
         }
         return;
@@ -137,37 +151,31 @@ export const useCanvasHotkeys = ({ setMode, deleteSelectedBlocks, copySelectedBl
 
       const key = event.key.toLowerCase();
 
-      if (key === 'v') {
-        setMode('select');
+      if (key === "v") {
+        setMode("select");
         event.preventDefault();
         return;
       }
 
-      if (key === 'f') {
-        setMode('frame');
+      if (key === "f") {
+        setMode("frame");
         event.preventDefault();
         return;
       }
 
-      if (key === 't') {
-        setMode('text');
+      if (key === "t") {
+        setMode("text");
         event.preventDefault();
         return;
       }
 
-      if (key === 'a') {
-        setMode('arrow');
+      if (key === "a") {
+        setMode("arrow");
         event.preventDefault();
         return;
       }
 
-      if (key === 'h') {
-        setMode('html');
-        event.preventDefault();
-        return;
-      }
-
-      if (key === 'backspace' || key === 'delete') {
+      if (key === "backspace" || key === "delete") {
         if (state.selectedIds.length > 0) {
           event.preventDefault();
           deleteSelectedBlocks();
@@ -192,20 +200,27 @@ export const useCanvasHotkeys = ({ setMode, deleteSelectedBlocks, copySelectedBl
     };
 
     const handleKeyUp = (event: KeyboardEvent) => {
-      if (event.code === 'Space') {
+      if (event.code === "Space") {
         event.preventDefault();
         resetSpaceMode();
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    window.addEventListener('blur', resetSpaceMode);
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", resetSpaceMode);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-      window.removeEventListener('blur', resetSpaceMode);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", resetSpaceMode);
     };
-  }, [deleteSelectedBlocks, setMode, copySelectedBlocks, pasteBlocks, stage, zoom]);
+  }, [
+    deleteSelectedBlocks,
+    setMode,
+    copySelectedBlocks,
+    pasteBlocks,
+    stage,
+    zoom,
+  ]);
 };

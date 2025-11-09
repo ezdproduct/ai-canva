@@ -85,13 +85,6 @@ function EditorHeader({ className }: { className?: string }) {
               label: "Add Arrow",
               hotkey: "A",
             },
-            {
-              children: BlockIcon("html"),
-              onClick: () => setMode("html"),
-              isActive: mode === "html",
-              label: "Add HTML",
-              hotkey: "H",
-            },
           ]}
           className="hidden md:flex"
         />
