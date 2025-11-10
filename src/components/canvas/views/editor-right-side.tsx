@@ -38,7 +38,7 @@ function EditorRightSide({ className }: { className?: string }) {
                 block={activeBlock as IEditorBlockText}
               />
             ) : null}
-            <LayerController blockId={activeBlock.id} />
+            {blockType !== "text" && <LayerController blockId={activeBlock.id} />}
           </>
         ) : (
           <CanvasController />

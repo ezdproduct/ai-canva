@@ -1,6 +1,7 @@
 import type { IEditorBlockText, ITextDecoration } from "@/lib/schema";
 import ControllerRow from "../controller-row";
 import { useEditorStore } from "@/components/canvas/use-editor";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 
 interface TextDecorationControlProps {
   blockId: string;
@@ -23,7 +24,7 @@ function TextDecorationControl({ blockId, block, className }: TextDecorationCont
       className={className}
       contentClassName="justify-between"
     >
-      <select
+      <NativeSelect
         name="textDecoration"
         id="textDecoration"
         value={resolvedBlock.textDecoration || "inherit"}
@@ -32,13 +33,12 @@ function TextDecorationControl({ blockId, block, className }: TextDecorationCont
             textDecoration: e.target.value as ITextDecoration,
           });
         }}
-        className="h-8 w-full rounded-md border border-border bg-background px-2 pr-6 text-xs appearance-none outline-hidden focus:border-primary focus:ring-1 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        <option value="inherit">Default</option>
-        <option value="overline">Overline</option>
-        <option value="line-through">Line Through</option>
-        <option value="underline">Underline</option>
-      </select>
+        <NativeSelectOption value="inherit">Default</NativeSelectOption>
+        <NativeSelectOption value="overline">Overline</NativeSelectOption>
+        <NativeSelectOption value="line-through">Line Through</NativeSelectOption>
+        <NativeSelectOption value="underline">Underline</NativeSelectOption>
+      </NativeSelect>
     </ControllerRow>
   );
 }

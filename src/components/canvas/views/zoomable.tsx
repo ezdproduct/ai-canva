@@ -1,5 +1,7 @@
 import { PlusIcon, MinusIcon } from "@radix-ui/react-icons";
-import ButtonsGroup from "@/components/ui/buttons-group";
+import { ButtonGroup } from "@/components/ui/buttons-group";
+import { Button } from "@/components/ui/button";
+import CustomTooltip from "@/components/ui/tooltip";
 
 function ZoomHandler({
   zoomIn,
@@ -12,25 +14,23 @@ function ZoomHandler({
 }) {
   return (
     <div className="absolute bottom-4 right-4 bg-background">
-      <ButtonsGroup
-        buttons={[
-          {
-            children: <MinusIcon />,
-            onClick: zoomOut,
-            label: "Zoom Out",
-          },
-          {
-            children: <PlusIcon />,
-            onClick: zoomIn,
-            label: "Zoom In",
-          },
-          {
-            children: <span className="text-sm px-2">Reset</span>,
-            onClick: resetZoom,
-            label: "Reset Zoom",
-          },
-        ]}
-      />
+      <ButtonGroup>
+        <CustomTooltip content="Zoom Out">
+          <Button variant="outline" size="icon" onClick={zoomOut}>
+            <MinusIcon />
+          </Button>
+        </CustomTooltip>
+        <CustomTooltip content="Zoom In">
+          <Button variant="outline" size="icon" onClick={zoomIn}>
+            <PlusIcon />
+          </Button>
+        </CustomTooltip>
+        <CustomTooltip content="Reset Zoom">
+          <Button variant="outline" onClick={resetZoom}>
+            Reset
+          </Button>
+        </CustomTooltip>
+      </ButtonGroup>
     </div>
   );
 }

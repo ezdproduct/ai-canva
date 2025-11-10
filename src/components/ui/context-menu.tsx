@@ -9,6 +9,7 @@ import {
 } from "@radix-ui/react-icons";
 
 import { cn } from "@/lib/utils";
+import { Kbd } from "@/components/ui/kbd";
 
 const ContextMenu = ContextMenuPrimitive.Root;
 
@@ -172,13 +173,10 @@ ContextMenuSeparator.displayName = ContextMenuPrimitive.Separator.displayName;
 function ContextMenuShortcut({
   className,
   ...props
-}: React.HTMLAttributes<HTMLSpanElement>) {
+}: React.HTMLAttributes<HTMLElement>) {
   return (
-    <span
-      className={cn(
-        "ml-auto text-xs tracking-widest text-muted-foreground",
-        className,
-      )}
+    <Kbd
+      className={cn("ml-auto", className)}
       {...props}
     />
   );

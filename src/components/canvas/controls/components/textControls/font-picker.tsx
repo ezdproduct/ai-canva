@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import ControllerRow from "../controller-row";
 import { fontsList, fontWeights } from "./fonts";
 import { useEditorStore } from "@/components/canvas/use-editor";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 
 interface FontControlProps {
   blockId: string;
@@ -209,7 +210,7 @@ function FontControl({ blockId, block, className }: FontControlProps) {
         </Popover>
       </ControllerRow>
       <ControllerRow label="Weight" contentClassName="justify-between">
-        <select
+        <NativeSelect
           name="fontWeight"
           id="fontWeight"
           value={resolvedBlock.font?.weight}
@@ -224,14 +225,13 @@ function FontControl({ blockId, block, className }: FontControlProps) {
             void handleWeightChange(resolvedBlock.font.family, nextWeight);
           }}
           disabled={weights.length < 2}
-          className="h-8 w-full rounded-md border border-border bg-background px-2 pr-6 text-xs appearance-none outline-hidden focus:border-primary focus:ring-1 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {weights.map((weight) => (
-            <option key={weight} value={weight}>
+            <NativeSelectOption key={weight} value={weight}>
               {fontWeights.find((item) => item.value === weight)?.label || weight}
-            </option>
+            </NativeSelectOption>
           ))}
-        </select>
+        </NativeSelect>
       </ControllerRow>
     </>
   );

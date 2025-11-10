@@ -33,7 +33,7 @@ const executeGenerateMode = ({
     model: "xai/grok-4-fast-non-reasoning",
     system: generatePrompt,
     messages: convertToModelMessages(messages),
-    stopWhen: stepCountIs(20),
+    stopWhen: stepCountIs(5),
     toolChoice: "required",
     tools,
     onError: () => {

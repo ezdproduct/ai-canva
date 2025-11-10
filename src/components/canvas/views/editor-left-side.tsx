@@ -1,9 +1,22 @@
 import * as React from "react";
-import { MoreHorizontal, EyeOff, Eye, SettingsIcon } from "lucide-react";
+import {
+  MoreHorizontal,
+  EyeOff,
+  Eye,
+  SettingsIcon,
+  Trash2,
+  Copy,
+  ArrowUp,
+  ArrowUpToLine,
+  ArrowDown,
+  ArrowDownToLine,
+  Pencil,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ModeToggle } from "@/components/mode-toggle";
 import { ApiKeyDialog } from "@/components/api-key-dialog";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,14 +24,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  BackIcon,
-  BackwardIcon,
-  DeleteIcon,
-  DuplicateIcon,
-  FarwardIcon,
-  FrontIcon,
-} from "@/components/ui/icons";
 import type { IEditorBlocks } from "@/lib/schema";
 import { BlockIcon } from "../utils";
 import { useEditorStore } from "../use-editor";
@@ -125,41 +130,39 @@ const BlockItem = React.forwardRef<HTMLDivElement, BlockItemProps>(
           >
             <div className="text-base opacity-70">{BlockIcon(block.type)}</div>
           </div>
-          <input
-            type="text"
-            value={label}
-            onChange={(event) => setLabel(event.target.value)}
-            className={cn(
-              "sidebar-item-label-input flex-1 h-6 overflow-hidden text-ellipsis border px-1 text-sm text-foreground outline-hidden rounded-md truncate",
-              editable && "border-border bg-muted",
-              !editable && "border-transparent"
-            )}
-            style={{
-              backgroundColor: editable ? undefined : "transparent",
-              cursor: editable ? "text" : undefined,
-            }}
-            readOnly={!editable}
-            onDoubleClick={(event) => {
-              event.stopPropagation();
-              setEditable(true);
-            }}
-            onFocus={(event) => event.stopPropagation()}
-            onClick={(event) => event.stopPropagation()}
-            onBlur={() => {
-              setEditable(false);
-              if (block.label !== label) {
-                onRename?.(block.id, label);
-              }
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
+          {editable ? (
+            <Input
+              type="text"
+              value={label}
+              onChange={(event) => setLabel(event.target.value)}
+              className="sidebar-item-label-input flex-1 h-6 overflow-hidden text-ellipsis px-1 text-sm truncate border-border bg-muted"
+              autoFocus
+              onFocus={(event) => event.stopPropagation()}
+              onClick={(event) => event.stopPropagation()}
+              onBlur={() => {
                 setEditable(false);
                 if (block.label !== label) {
                   onRename?.(block.id, label);
                 }
-              }
-            }}
-          />
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  setEditable(false);
+                  if (block.label !== label) {
+                    onRename?.(block.id, label);
+                  }
+                }
+                if (event.key === "Escape") {
+                  setEditable(false);
+                  setLabel(block.label);
+                }
+              }}
+            />
+          ) : (
+            <div className="flex-1 h-6 px-1 text-sm truncate flex items-center">
+              {block.label}
+            </div>
+          )}
         </button>
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -174,41 +177,46 @@ const BlockItem = React.forwardRef<HTMLDivElement, BlockItemProps>(
                 handleSelect();
               }}
             >
-              <MoreHorizontal />
+              <MoreHorizontal className="size-4" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-52">
+            <DropdownMenuItem onClick={() => setEditable(true)}>
+              <Pencil className="mr-1 size-4" />
+              Rename
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onDuplicate?.(block.id)}>
-              <DuplicateIcon className="mr-2 h-5 w-5" />
+              <Copy className="mr-1 size-4" />
               Duplicate
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onDelete?.(block.id)}>
-              <DeleteIcon className="mr-2 h-5 w-5" />
+              <Trash2 className="mr-1 size-4" />
               Delete
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onToggleVisibility?.(block.id)}>
               {block.visible ? (
-                <EyeOff className="mr-2 h-5 w-5" />
+                <EyeOff className="mr-1 size-4" />
               ) : (
-                <Eye className="mr-2 h-5 w-5" />
+                <Eye className="mr-1 size-4" />
               )}
               {block.visible ? "Hide" : "Show"}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onBringForward?.(block.id)}>
-              <FarwardIcon className="mr-2 h-5 w-5" />
+              <ArrowUp className="mr-1 size-4" />
               Bring forward
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onBringToFront?.(block.id)}>
-              <FrontIcon className="mr-2 h-5 w-5" />
+              <ArrowUpToLine className="mr-1 size-4" />
               Bring to front
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onBringBackward?.(block.id)}>
-              <BackwardIcon className="mr-2 h-5 w-5" />
+              <ArrowDown className="mr-1 size-4" />
               Bring backward
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onBringToBack?.(block.id)}>
-              <BackIcon className="mr-2 h-5 w-5" />
+              <ArrowDownToLine className="mr-1 size-4" />
               Bring to back
             </DropdownMenuItem>
           </DropdownMenuContent>

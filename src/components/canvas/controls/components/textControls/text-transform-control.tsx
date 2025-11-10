@@ -1,6 +1,7 @@
 import type { IEditorBlockText, ITextTransform } from "@/lib/schema";
 import ControllerRow from "../controller-row";
 import { useEditorStore } from "@/components/canvas/use-editor";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 
 interface TextTransformControlProps {
   blockId: string;
@@ -19,7 +20,7 @@ function TextTransformControl({ blockId, block, className }: TextTransformContro
   }
   return (
     <ControllerRow label="Transform" className={className} contentClassName="justify-between">
-      <select
+      <NativeSelect
         name="textTransform"
         id="textTransform"
         value={resolvedBlock.textTransform || "inherit"}
@@ -28,13 +29,12 @@ function TextTransformControl({ blockId, block, className }: TextTransformContro
             textTransform: e.target.value as ITextTransform,
           });
         }}
-        className="h-8 w-full rounded-md border border-border bg-background px-2 pr-6 text-xs appearance-none outline-hidden focus:border-primary focus:ring-1 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        <option value="inherit">Default</option>
-        <option value="capitalize">Capitalize</option>
-        <option value="uppercase">Uppercase</option>
-        <option value="lowercase">Lowercase</option>
-      </select>
+        <NativeSelectOption value="inherit">Default</NativeSelectOption>
+        <NativeSelectOption value="capitalize">Capitalize</NativeSelectOption>
+        <NativeSelectOption value="uppercase">Uppercase</NativeSelectOption>
+        <NativeSelectOption value="lowercase">Lowercase</NativeSelectOption>
+      </NativeSelect>
     </ControllerRow>
   );
 }

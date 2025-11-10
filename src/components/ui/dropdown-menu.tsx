@@ -9,6 +9,7 @@ import {
 } from "@radix-ui/react-icons";
 
 import { cn } from "@/lib/utils";
+import { Kbd } from "@/components/ui/kbd";
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 
@@ -176,10 +177,10 @@ DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName;
 function DropdownMenuShortcut({
   className,
   ...props
-}: React.HTMLAttributes<HTMLSpanElement>) {
+}: React.HTMLAttributes<HTMLElement>) {
   return (
-    <span
-      className={cn("ml-auto text-xs tracking-widest opacity-60", className)}
+    <Kbd
+      className={cn("ml-auto", className)}
       {...props}
     />
   );

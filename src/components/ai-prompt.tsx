@@ -11,7 +11,14 @@ import type {
 } from "@/ai/messages/types";
 import type { DataPart } from "@/ai/messages/data-parts";
 import { Button } from "./ui/button";
-import { Loader2, Send } from "lucide-react";
+import { Loader2, ArrowLeftRight } from "lucide-react";
+import {
+  InputGroup,
+  InputGroupTextarea,
+  InputGroupAddon,
+} from "./ui/input-group";
+import { ButtonGroup, ButtonGroupSeparator } from "./ui/buttons-group";
+import CustomTooltip from "./ui/tooltip";
 import { useEditorStore } from "./canvas/use-editor";
 import { useOrderedBlocks } from "./canvas/hooks/use-ordered-blocks";
 import {
@@ -171,51 +178,52 @@ export default function AIPrompt() {
       <div className="fixed bottom-3 left-1/2 z-50 w-full max-w-2xl -translate-x-1/2">
         <div className="mx-4 rounded-3xl border border-border/50 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 shadow-2xl">
           <div className="pt-5 p-3">
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onFocus={handleTextareaFocus}
-              placeholder="Describe what you want to create..."
-              disabled={isLoading}
-              rows={1}
-              className={cn(
-                "w-full bg-transparent h-6! mb-8 pl-2 text-base text-foreground outline-none resize-none",
-                "placeholder:text-muted-foreground/50",
-                "disabled:cursor-not-allowed disabled:opacity-50"
-              )}
-            />
-            <div className="flex gap-2 items-center">
-              <select
-                value={mode}
-                onChange={(e) =>
-                  setMode(e.target.value as "generate" | "build")
-                }
+            <InputGroup>
+              <InputGroupTextarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onFocus={handleTextareaFocus}
+                placeholder="Describe what you want to create..."
                 disabled={isLoading}
+                rows={1}
                 className={cn(
-                  "px-3 py-2 text-sm rounded-xl border border-border bg-background",
-                  "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
-                  "disabled:cursor-not-allowed disabled:opacity-50"
+                  "h-6! mb-8 text-base text-foreground",
+                  "placeholder:text-muted-foreground/50"
                 )}
-              >
-                <option value="generate">Generate</option>
-                <option value="build">Build</option>
-              </select>
-              <Button
-                type="submit"
-                onClick={handleSubmit}
-                disabled={!input.trim() || isLoading}
-                size="icon"
-                variant={input.trim() ? "default" : "outline"}
-                className="w-10 h-10 p-0 rounded-xl ml-auto"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <Send className="h-5 w-5 -rotate-90" />
-                )}
-              </Button>
-            </div>
+              />
+              <InputGroupAddon align="block-end" className="gap-2">
+                <ButtonGroup>
+                  <Button
+                    type="submit"
+                    onClick={handleSubmit}
+                    disabled={!input.trim() || isLoading}
+                    variant={input.trim() ? "default" : "outline"}
+                    size="sm"
+                    className="capitalize"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : null}
+                    {mode === "generate" ? "Generate" : "Build"}
+                  </Button>
+                  <ButtonGroupSeparator />
+                  <CustomTooltip content="Switch mode">
+                    <Button
+                      size="icon-sm"
+                      variant={input.trim() ? "default" : "outline"}
+                      disabled={isLoading}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setMode(mode === "generate" ? "build" : "generate");
+                      }}
+                    >
+                      <ArrowLeftRight className="h-4 w-4" />
+                    </Button>
+                  </CustomTooltip>
+                </ButtonGroup>
+              </InputGroupAddon>
+            </InputGroup>
           </div>
         </div>
       </div>

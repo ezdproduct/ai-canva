@@ -7,6 +7,7 @@ import { Command as CommandPrimitive } from "cmdk";
 
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Kbd } from "@/components/ui/kbd";
 
 const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,
@@ -129,13 +130,10 @@ CommandItem.displayName = CommandPrimitive.Item.displayName;
 function CommandShortcut({
   className,
   ...props
-}: React.HTMLAttributes<HTMLSpanElement>) {
+}: React.HTMLAttributes<HTMLElement>) {
   return (
-    <span
-      className={cn(
-        "ml-auto text-xs tracking-widest text-muted-foreground",
-        className,
-      )}
+    <Kbd
+      className={cn("ml-auto", className)}
       {...props}
     />
   );
