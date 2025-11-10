@@ -141,61 +141,78 @@ function EditorBottomToolbar() {
 
   const isLoading = status === "submitted" || status === "streaming";
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
+  const handleSubmit = React.useCallback(
+    async (e: React.FormEvent, overrideMode?: "generate" | "build") => {
+      e.preventDefault();
+      if (!input.trim() || isLoading) return;
 
-    const buildRequestBody = (selectionBounds?: SelectionBounds | null) => ({
-      ...(apiKey ? { openaiApiKey: apiKey } : {}),
-      mode: aiMode,
-      ...(selectionBounds ? { selectionBounds } : {}),
-    });
+      const modeToUse = overrideMode ?? aiMode;
 
-    try {
-      let canvasImage: string | null = null;
-      let selectionBounds: SelectionBounds | null = null;
+      const buildRequestBody = (selectionBounds?: SelectionBounds | null) => ({
+        ...(apiKey ? { openaiApiKey: apiKey } : {}),
+        mode: modeToUse,
+        ...(selectionBounds ? { selectionBounds } : {}),
+      });
 
-      if (aiMode === "build") {
-        canvasImage = await captureSelectedBlocksAsImage(
-          stage,
-          blocks,
-          selectedIds
-        );
+      try {
+        let canvasImage: string | null = null;
+        let selectionBounds: SelectionBounds | null = null;
 
-        if (selectedIds.length > 0) {
-          const boundsWithPadding = calculateSelectedBlocksBounds(
+        if (modeToUse === "build") {
+          canvasImage = await captureSelectedBlocksAsImage(
+            stage,
             blocks,
             selectedIds
           );
-          if (boundsWithPadding) {
-            selectionBounds = {
-              x: boundsWithPadding.x + EXPORT_PADDING,
-              y: boundsWithPadding.y + EXPORT_PADDING,
-              width: boundsWithPadding.width - EXPORT_PADDING * 2,
-              height: boundsWithPadding.height - EXPORT_PADDING * 2,
-            };
+
+          if (selectedIds.length > 0) {
+            const boundsWithPadding = calculateSelectedBlocksBounds(
+              blocks,
+              selectedIds
+            );
+            if (boundsWithPadding) {
+              selectionBounds = {
+                x: boundsWithPadding.x + EXPORT_PADDING,
+                y: boundsWithPadding.y + EXPORT_PADDING,
+                width: boundsWithPadding.width - EXPORT_PADDING * 2,
+                height: boundsWithPadding.height - EXPORT_PADDING * 2,
+              };
+            }
           }
+        } else {
+          canvasImage = await captureSelectedBlocksAsImage(stage, blocks, []);
         }
-      } else {
-        canvasImage = await captureSelectedBlocksAsImage(stage, blocks, []);
+
+        const filePart = canvasImage
+          ? {
+              type: "file" as const,
+              mediaType: "image/png" as const,
+              url: canvasImage,
+            }
+          : undefined;
+
+        sendMessage(
+          filePart ? { text: input, files: [filePart] } : { text: input },
+          { body: buildRequestBody(selectionBounds) }
+        );
+        setInput("");
+      } catch {
+        sendMessage({ text: input }, { body: buildRequestBody() });
+        setInput("");
       }
-
-      const filePart = canvasImage
-        ? {
-            type: "file" as const,
-            mediaType: "image/png" as const,
-            url: canvasImage,
-          }
-        : undefined;
-
-      sendMessage(
-        filePart ? { text: input, files: [filePart] } : { text: input },
-        { body: buildRequestBody(selectionBounds) }
-      );
-    } catch {
-      sendMessage({ text: input }, { body: buildRequestBody() });
-    }
-  };
+    },
+    [
+      input,
+      isLoading,
+      aiMode,
+      apiKey,
+      sendMessage,
+      stage,
+      blocks,
+      selectedIds,
+      setInput,
+    ]
+  );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -219,6 +236,47 @@ function EditorBottomToolbar() {
       textarea.style.height = `${textarea.scrollHeight}px`;
     }
   }, [input]);
+
+  // Handle keyboard shortcuts
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target;
+      const isInInput =
+        target instanceof HTMLElement &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable);
+
+      // Handle Shift+Tab to toggle between design and AI mode
+      if (event.key === "Tab" && event.shiftKey) {
+        if (isInInput) {
+          return;
+        }
+        event.preventDefault();
+        setToolbarMode((prev) => (prev === "design" ? "ai" : "design"));
+        return;
+      }
+
+      // Handle Cmd+B / Ctrl+B to switch to build mode and submit
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "b") {
+        // Only handle if we're in AI mode and have input
+        if (toolbarMode === "ai" && input.trim() && !isLoading) {
+          event.preventDefault();
+          setAiMode("build");
+          const formEvent = new Event("submit", {
+            bubbles: true,
+            cancelable: true,
+          }) as unknown as React.FormEvent;
+          handleSubmit(formEvent, "build");
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [setToolbarMode, toolbarMode, input, isLoading, setAiMode, handleSubmit]);
 
   return (
     <>
@@ -337,7 +395,7 @@ function EditorBottomToolbar() {
                     disabled={isLoading}
                     rows={1}
                     className={cn(
-                      "min-h-[24px] max-h-[120px] text-base text-foreground overflow-y-auto",
+                      "min-h-[24px] max-h-[120px] text-base text-foreground overflow-y-auto p-2",
                       "placeholder:text-muted-foreground/50"
                     )}
                   />
@@ -360,7 +418,7 @@ function EditorBottomToolbar() {
                       <CustomTooltip content="Switch mode">
                         <Button
                           size="icon-sm"
-                          variant={input.trim() ? "default" : "outline"}
+                          variant="outline"
                           disabled={isLoading}
                           onClick={(e) => {
                             e.preventDefault();
