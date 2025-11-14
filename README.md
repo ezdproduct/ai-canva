@@ -2,6 +2,8 @@
 
 A powerful, forkable canvas template for building your own design tools like Canva, Figma, or tldraw. This Next.js-based template provides a complete foundation for creating interactive canvas applications with AI-powered design generation.
 
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fkyh%2Fai-design-canvas)
+
 ## 🎨 Features
 
 ### Core Canvas Functionality
