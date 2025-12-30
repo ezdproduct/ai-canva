@@ -41,13 +41,13 @@ function ColorControl({
     <ControllerRow label={name} className={className}
       contentClassName="justify-between">
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            onClick={onClick}
-            className="flex h-7 w-full items-center justify-between rounded-md border border-border bg-muted px-1 text-xs transition hover:border-primary"
-          >
-            <div className="flex items-center gap-2">
+        <div className="flex h-7 w-full items-center justify-between rounded-md border border-border bg-muted px-1 text-xs transition hover:border-primary">
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              onClick={onClick}
+              className="flex flex-1 items-center gap-2"
+            >
               <div
                 className="h-5 w-5 rounded-sm border border-border bg-foreground/20"
                 style={{
@@ -61,18 +61,18 @@ function ColorControl({
               ) : (
                 <p className="opacity-50">Add...</p>
               )}
-            </div>
-            {value && (
-              <button
-                type="button"
-                className="-mr-1 rounded p-1 text-foreground/60 transition hover:bg-accent"
-                onClick={handleClear}
-              >
-                <Cross2Icon className="h-3 w-3 opacity-50" />
-              </button>
-            )}
-          </button>
-        </PopoverTrigger>
+            </button>
+          </PopoverTrigger>
+          {value && (
+            <button
+              type="button"
+              className="-mr-1 rounded p-1 text-foreground/60 transition hover:bg-accent"
+              onClick={handleClear}
+            >
+              <Cross2Icon className="h-3 w-3 opacity-50" />
+            </button>
+          )}
+        </div>
         <PopoverContent
           align="center"
           className="w-[293px]"
