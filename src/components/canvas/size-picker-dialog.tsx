@@ -21,6 +21,7 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { Monitor, Smartphone, Type, LayoutTemplate } from "lucide-react";
+import { useEditorStore } from "@/components/canvas/use-editor";
 
 interface SizePickerDialogProps {
     open: boolean;
@@ -61,9 +62,19 @@ export function SizePickerDialog({ open, onSelectSize, onClose }: SizePickerDial
     const [width, setWidth] = React.useState(1080);
     const [height, setHeight] = React.useState(1080);
 
+    const handleSelectSizeWithWarning = (w: number, h: number) => {
+        const hasBlocks = useEditorStore.getState().blockOrder.length > 0;
+        if (hasBlocks) {
+            if (!confirm("Creating a new design will clear your current work. Continue?")) {
+                return;
+            }
+        }
+        onSelectSize(w, h);
+    };
+
     const handleCustomSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSelectSize(width, height);
+        handleSelectSizeWithWarning(width, height);
     };
 
     return (
@@ -71,7 +82,7 @@ export function SizePickerDialog({ open, onSelectSize, onClose }: SizePickerDial
             <DialogContent
                 className="max-w-3xl"
                 onInteractOutside={(e) => e.preventDefault()}
-                overlayClassName="bg-transparent"
+                overlayClassName="bg-black/20 backdrop-blur-sm"
             >
                 <DialogHeader className="relative">
                     <DialogTitle>Choose a canvas size</DialogTitle>
@@ -100,7 +111,7 @@ export function SizePickerDialog({ open, onSelectSize, onClose }: SizePickerDial
                                             <Card
                                                 key={preset.name}
                                                 className="cursor-pointer hover:border-primary/50 transition-colors"
-                                                onClick={() => onSelectSize(preset.width, preset.height)}
+                                                onClick={() => handleSelectSizeWithWarning(preset.width, preset.height)}
                                             >
                                                 <CardHeader className="p-4 pb-2">
                                                     <CardTitle className="text-base">{preset.name}</CardTitle>
