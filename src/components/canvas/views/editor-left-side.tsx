@@ -1,241 +1,31 @@
-import * as React from "react";
-import {
-  MoreHorizontal,
-  EyeOff,
-  Eye,
-  SettingsIcon,
-  Trash2,
-  Copy,
-  ArrowUp,
-  ArrowUpToLine,
-  ArrowDown,
-  ArrowDownToLine,
-  Pencil,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useMemo, useCallback } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ModeToggle } from "@/components/mode-toggle";
-import { ApiKeyDialog } from "@/components/api-key-dialog";
-import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import LayoutController from "../controls/layout-controller";
+import TextController from "../controls/text-controller";
+import LayerController from "../controls/layer-controller";
+import CanvasController from "../controls/canvas-controller";
+import { useEditorStore } from "../use-editor";
+import type { IEditorBlockText, IEditorBlocks } from "@/lib/schema";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { IEditorBlocks } from "@/lib/schema";
-import { BlockIcon } from "../utils";
-import { useEditorStore } from "../use-editor";
-import { useShallow } from "zustand/react/shallow";
+import { Download, ImageDown, ClipboardCopy, LayersIcon } from "lucide-react";
+import { toast } from "sonner";
 import { useOrderedBlocks } from "../hooks/use-ordered-blocks";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { GitHubLogoIcon } from "@radix-ui/react-icons";
+import { useShallow } from "zustand/react/shallow";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BlockItem } from "./block-item";
 
-interface BlockItemProps extends React.HTMLAttributes<HTMLDivElement> {
-  block: IEditorBlocks;
-  selected?: boolean;
-  onSelectBlock?: (block: IEditorBlocks) => void;
-  onHoverChange?: (hovered: boolean) => void;
-  onRename?: (id: string, label: string) => void;
-  onDuplicate?: (id: string) => void;
-  onDelete?: (id: string) => void;
-  onToggleVisibility?: (id: string) => void;
-  onBringForward?: (id: string) => void;
-  onBringBackward?: (id: string) => void;
-  onBringToFront?: (id: string) => void;
-  onBringToBack?: (id: string) => void;
-}
-
-const BlockItem = React.forwardRef<HTMLDivElement, BlockItemProps>(
-  (
-    {
-      block,
-      selected = false,
-      onSelectBlock,
-      onHoverChange,
-      onRename,
-      onDuplicate,
-      onDelete,
-      onToggleVisibility,
-      onBringForward,
-      onBringBackward,
-      onBringToFront,
-      onBringToBack,
-      className,
-      onMouseEnter,
-      onMouseLeave,
-      ...props
-    },
-    ref
-  ) => {
-    const [label, setLabel] = React.useState(block.label);
-    const [editable, setEditable] = React.useState(false);
-
-    React.useEffect(() => {
-      if (!editable) {
-        setLabel(block.label);
-      }
-    }, [block.label, editable]);
-
-    const handleSelect = React.useCallback(() => {
-      if (!block.visible) {
-        return;
-      }
-      onSelectBlock?.(block);
-    }, [block, onSelectBlock]);
-
-    return (
-      <div
-        ref={ref}
-        className={cn(
-          "sidebar-item group/item relative mx-2 my-0.5",
-          {
-            "opacity-40": !block.visible,
-          },
-          className
-        )}
-        data-block-id={block.id}
-        onMouseEnter={(event) => {
-          if (block.visible) {
-            onHoverChange?.(true);
-          }
-          onMouseEnter?.(event);
-        }}
-        onMouseLeave={(event) => {
-          onHoverChange?.(false);
-          onMouseLeave?.(event);
-        }}
-        {...props}
-      >
-        <button
-          type="button"
-          className={cn(
-            "group/button flex items-center gap-3 w-full p-[3px] border rounded-xl transition-colors group-hover/item:bg-muted",
-            {
-              "bg-muted border-border/60": selected,
-              "border-transparent": !selected,
-            }
-          )}
-          onClick={handleSelect}
-          aria-label={`Select ${block.label}`}
-        >
-          <div
-            className={cn(
-              "flex justify-center items-center shrink-0 size-8 rounded-lg transition-all group-hover/item:bg-background",
-              {
-                "bg-background shadow-sm": selected,
-                "bg-muted": !selected,
-              }
-            )}
-          >
-            <div className="text-base opacity-70">{BlockIcon(block.type)}</div>
-          </div>
-          {editable ? (
-            <Input
-              type="text"
-              value={label}
-              onChange={(event) => setLabel(event.target.value)}
-              className="sidebar-item-label-input flex-1 h-6 overflow-hidden text-ellipsis px-1 text-sm truncate border-border bg-muted"
-              autoFocus
-              onFocus={(event) => event.stopPropagation()}
-              onClick={(event) => event.stopPropagation()}
-              onBlur={() => {
-                setEditable(false);
-                if (block.label !== label) {
-                  onRename?.(block.id, label);
-                }
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  setEditable(false);
-                  if (block.label !== label) {
-                    onRename?.(block.id, label);
-                  }
-                }
-                if (event.key === "Escape") {
-                  setEditable(false);
-                  setLabel(block.label);
-                }
-              }}
-            />
-          ) : (
-            <div className="flex-1 h-6 px-1 text-sm truncate flex items-center">
-              {block.label}
-            </div>
-          )}
-        </button>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            className="sidebar-item-actions absolute top-1/2 right-3 -translate-y-1/2 z-3 invisible"
-            asChild
-          >
-            <button
-              type="button"
-              className="rounded-lg p-1.5 text-foreground/50 transition-all hover:bg-muted hover:text-foreground"
-              onClick={(event) => {
-                event.stopPropagation();
-                handleSelect();
-              }}
-            >
-              <MoreHorizontal className="size-4" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-52">
-            <DropdownMenuItem onClick={() => setEditable(true)}>
-              <Pencil className="mr-1 size-4" />
-              Rename
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => onDuplicate?.(block.id)}>
-              <Copy className="mr-1 size-4" />
-              Duplicate
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onDelete?.(block.id)}>
-              <Trash2 className="mr-1 size-4" />
-              Delete
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onToggleVisibility?.(block.id)}>
-              {block.visible ? (
-                <EyeOff className="mr-1 size-4" />
-              ) : (
-                <Eye className="mr-1 size-4" />
-              )}
-              {block.visible ? "Hide" : "Show"}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => onBringForward?.(block.id)}>
-              <ArrowUp className="mr-1 size-4" />
-              Bring forward
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onBringToFront?.(block.id)}>
-              <ArrowUpToLine className="mr-1 size-4" />
-              Bring to front
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onBringBackward?.(block.id)}>
-              <ArrowDown className="mr-1 size-4" />
-              Bring backward
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onBringToBack?.(block.id)}>
-              <ArrowDownToLine className="mr-1 size-4" />
-              Bring to back
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    );
-  }
-);
-
-BlockItem.displayName = "BlockItem";
-
-function EditorLeftSide() {
-  const [showApiKeyDialog, setShowApiKeyDialog] = React.useState(false);
-  const blocks = useOrderedBlocks();
-  const [selectedIds, setSelectedIds] = useEditorStore(
-    useShallow((state) => [state.selectedIds, state.setSelectedIds])
-  );
+function EditorLeftSide({ className }: { className?: string }) {
+  // Select separately to avoid creating new array references
+  const selectedIds = useEditorStore((state) => state.selectedIds);
+  const blocksById = useEditorStore((state) => state.blocksById);
   const [
     setHoveredId,
     updateBlockValues,
@@ -246,6 +36,7 @@ function EditorLeftSide() {
     bringBackwardBlock,
     bringToTopBlock,
     bringToBackBlock,
+    setSelectedIds,
   ] = useEditorStore(
     useShallow((state) => [
       state.setHoveredId,
@@ -257,10 +48,11 @@ function EditorLeftSide() {
       state.bringBackwardBlock,
       state.bringToTopBlock,
       state.bringToBackBlock,
+      state.setSelectedIds,
     ])
   );
 
-  const handleSelect = React.useCallback(
+  const handleSelect = useCallback(
     (block: IEditorBlocks) => {
       if (!block.visible) {
         return;
@@ -270,53 +62,142 @@ function EditorLeftSide() {
     [setSelectedIds]
   );
 
+  const downloadImage = useEditorStore((state) => state.downloadImage);
+  const blocks = useOrderedBlocks();
+  const [canvasSize, canvasBackground] = useEditorStore(
+    useShallow((state) => [state.canvas.size, state.canvas.background])
+  );
+
+  const handleCopyJson = useCallback(async () => {
+    const serialized = JSON.stringify(
+      {
+        blocks,
+        size: canvasSize,
+        background: canvasBackground,
+      },
+      null,
+      2
+    );
+
+    if (
+      typeof navigator === "undefined" ||
+      !navigator.clipboard ||
+      typeof navigator.clipboard.writeText !== "function"
+    ) {
+      toast.error("Clipboard is not available in this environment.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(serialized);
+      toast.success("Canvas JSON copied to clipboard.");
+    } catch (error) {
+      console.error("Failed to copy canvas JSON", error);
+      toast.error("Failed to copy JSON to clipboard.");
+    }
+  }, [blocks, canvasBackground, canvasSize]);
+
+  // Compute active block with stable reference
+  const activeBlock = useMemo(() => {
+    if (selectedIds.length === 1) {
+      return blocksById[selectedIds[0]] ?? null;
+    }
+    return null;
+  }, [selectedIds, blocksById]);
+  const blockType = activeBlock?.type ?? null;
+
   return (
-    <div className="editor-left-side fixed left-3 top-3 bottom-3 z-20 hidden md:flex w-64 flex-col border border-border/50 bg-background/95 backdrop-blur shadow-xl rounded-[1.25rem] overflow-hidden">
-      <p className="p-4 pb-3 text-sm font-semibold">Layers</p>
-      <ScrollArea className="flex-1">
-        {blocks.map((block) => (
-          <BlockItem
-            key={block.id}
-            block={block}
-            selected={selectedIds.length === 1 && selectedIds[0] === block.id}
-            onSelectBlock={handleSelect}
-            onHoverChange={(hovered) => setHoveredId(hovered ? block.id : null)}
-            onRename={(id, label) => updateBlockValues(id, { label })}
-            onDuplicate={duplicateBlock}
-            onDelete={deleteBlock}
-            onToggleVisibility={showHideBlock}
-            onBringForward={bringForwardBlock}
-            onBringBackward={bringBackwardBlock}
-            onBringToFront={bringToTopBlock}
-            onBringToBack={bringToBackBlock}
-          />
-        ))}
-      </ScrollArea>
-      <div className="border-t border-border p-2 flex items-center justify-between gap-2">
-        <div>
-          <Button variant="outline" size="icon" asChild>
-            <Link href="https://github.com/kyh/ai-canvas">
-              <span className="sr-only">GitHub</span>
-              <GitHubLogoIcon className="size-5" />
-            </Link>
-          </Button>
+    <div
+      className={cn(
+        "fixed left-3 top-3 bottom-3 z-20 hidden md:flex w-64 flex-col border border-border/50 bg-background/95 backdrop-blur shadow-xl rounded-[1.25rem] overflow-hidden",
+        className
+      )}
+    >
+      <Tabs defaultValue="design" className="flex flex-col h-full">
+        <div className="p-4 border-b flex justify-between items-center bg-card/50">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="design">Design</TabsTrigger>
+            <TabsTrigger value="layers">Layers</TabsTrigger>
+          </TabsList>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="h-8 gap-2 ml-2">
+                <Download className="h-3.5 w-3.5" />
+                <span className="text-xs">Xuất ảnh</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem
+                onClick={() => {
+                  void downloadImage();
+                }}
+              >
+                <ImageDown className="mr-2 h-4 w-4" />
+                Export as image
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  void handleCopyJson();
+                }}
+              >
+                <ClipboardCopy className="mr-2 h-4 w-4" />
+                Copy as JSON
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <div className="flex items-center gap-2">
-          <ModeToggle />
-          <Button
-            variant="outline"
-            size="icon"
-            className="size-10"
-            onClick={() => setShowApiKeyDialog(true)}
-          >
-            <SettingsIcon className="size-5" />
-          </Button>
-        </div>
-      </div>
-      <ApiKeyDialog
-        open={showApiKeyDialog}
-        onOpenChange={setShowApiKeyDialog}
-      />
+
+        <TabsContent value="design" className="flex-1 min-h-0 mt-0">
+          <ScrollArea className="h-full">
+            <div className="p-4 flex flex-col gap-4">
+              {activeBlock && blockType ? (
+                <>
+                  <LayoutController blockId={activeBlock.id} />
+                  {blockType === "text" ? (
+                    <TextController
+                      blockId={activeBlock.id}
+                      block={activeBlock as IEditorBlockText}
+                    />
+                  ) : null}
+                  {blockType !== "text" && <LayerController blockId={activeBlock.id} />}
+                </>
+              ) : (
+                <CanvasController />
+              )}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="layers" className="flex-1 min-h-0 mt-0">
+          <ScrollArea className="h-full">
+            <div className="p-2">
+              {blocks.map((block) => (
+                <BlockItem
+                  key={block.id}
+                  block={block}
+                  selected={selectedIds.length === 1 && selectedIds[0] === block.id}
+                  onSelectBlock={handleSelect}
+                  onHoverChange={(hovered: boolean) => setHoveredId(hovered ? block.id : null)}
+                  onRename={(id: string, label: string) => updateBlockValues(id, { label })}
+                  onDuplicate={duplicateBlock}
+                  onDelete={deleteBlock}
+                  onToggleVisibility={showHideBlock}
+                  onBringForward={bringForwardBlock}
+                  onBringBackward={bringBackwardBlock}
+                  onBringToFront={bringToTopBlock}
+                  onBringToBack={bringToBackBlock}
+                />
+              ))}
+              {blocks.length === 0 && (
+                <div className="flex flex-col items-center justify-center p-8 text-muted-foreground">
+                  <LayersIcon className="h-8 w-8 mb-2 opacity-50" />
+                  <p className="text-sm">No layers yet</p>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

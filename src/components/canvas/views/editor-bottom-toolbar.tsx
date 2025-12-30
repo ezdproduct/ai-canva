@@ -3,9 +3,6 @@
 import * as React from "react";
 import { CursorArrowIcon, HandIcon } from "@radix-ui/react-icons";
 import {
-  ClipboardCopy,
-  Download,
-  ImageDown,
   Loader2,
   Pencil,
   PenTool,
@@ -49,12 +46,7 @@ import {
   InputGroupAddon,
   InputGroupButton,
 } from "@/components/ui/input-group";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
 
 function EditorBottomToolbar() {
   const [toolbarMode, setToolbarMode] = React.useState<"design" | "ai">("ai");
@@ -73,15 +65,11 @@ function EditorBottomToolbar() {
       state.history.redo.length,
     ])
   );
-  const downloadImage = useEditorStore((state) => state.downloadImage);
   const addBlock = useEditorStore((state) => state.addBlock);
   const updateBlockValues = useEditorStore((state) => state.updateBlockValues);
   const stage = useEditorStore((state) => state.stage);
   const blocks = useOrderedBlocks();
   const selectedIds = useEditorStore((state) => state.selectedIds);
-  const [canvasSize, canvasBackground] = useEditorStore(
-    useShallow((state) => [state.canvas.size, state.canvas.background])
-  );
 
   // AI Prompt state
   const [input, setInput] = React.useState("");
@@ -151,34 +139,7 @@ function EditorBottomToolbar() {
   });
 
   const isLoading = status === "submitted" || status === "streaming";
-  const handleCopyJson = React.useCallback(async () => {
-    const serialized = JSON.stringify(
-      {
-        blocks,
-        size: canvasSize,
-        background: canvasBackground,
-      },
-      null,
-      2
-    );
 
-    if (
-      typeof navigator === "undefined" ||
-      !navigator.clipboard ||
-      typeof navigator.clipboard.writeText !== "function"
-    ) {
-      toast.error("Clipboard is not available in this environment.");
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(serialized);
-      toast.success("Canvas JSON copied to clipboard.");
-    } catch (error) {
-      console.error("Failed to copy canvas JSON", error);
-      toast.error("Failed to copy JSON to clipboard.");
-    }
-  }, [blocks, canvasBackground, canvasSize]);
 
   const handleSubmit = React.useCallback(
     async (e: React.FormEvent) => {
@@ -216,10 +177,10 @@ function EditorBottomToolbar() {
 
         const filePart = canvasImage
           ? {
-              type: "file" as const,
-              mediaType: "image/png" as const,
-              url: canvasImage,
-            }
+            type: "file" as const,
+            mediaType: "image/png" as const,
+            url: canvasImage,
+          }
           : undefined;
 
         sendMessage(
@@ -400,34 +361,7 @@ function EditorBottomToolbar() {
                       <Redo />
                     </Button>
                   </CustomTooltip>
-                  <Separator orientation="vertical" className="h-7! my-auto" />
-                  <DropdownMenu>
-                    <CustomTooltip content="Export">
-                      <DropdownMenuTrigger asChild>
-                        <Button size="icon" variant="ghost">
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                    </CustomTooltip>
-                    <DropdownMenuContent align="end" className="w-44">
-                      <DropdownMenuItem
-                        onClick={() => {
-                          void downloadImage();
-                        }}
-                      >
-                        <ImageDown className="mr-2 h-4 w-4" />
-                        Export as image
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => {
-                          void handleCopyJson();
-                        }}
-                      >
-                        <ClipboardCopy className="mr-2 h-4 w-4" />
-                        Copy as JSON
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+
                 </div>
               </TabsContent>
 
@@ -469,7 +403,7 @@ function EditorBottomToolbar() {
                     value="ai"
                     className={cn(
                       toolbarMode === "ai" &&
-                        "bg-background shadow-sm dark:text-foreground dark:border-input dark:bg-input/30"
+                      "bg-background shadow-sm dark:text-foreground dark:border-input dark:bg-input/30"
                     )}
                   >
                     <Sparkles className="h-3 w-3" />
@@ -480,7 +414,7 @@ function EditorBottomToolbar() {
                     value="design"
                     className={cn(
                       toolbarMode === "design" &&
-                        "bg-background shadow-sm dark:text-foreground dark:border-input dark:bg-input/30"
+                      "bg-background shadow-sm dark:text-foreground dark:border-input dark:bg-input/30"
                     )}
                   >
                     <PenTool className="h-3 w-3" />
@@ -489,8 +423,8 @@ function EditorBottomToolbar() {
               </TabsList>
             </div>
           </Tabs>
-        </div>
-      </div>
+        </div >
+      </div >
       <input
         type="file"
         accept="image/*"
