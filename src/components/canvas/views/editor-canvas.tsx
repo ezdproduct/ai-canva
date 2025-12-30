@@ -50,7 +50,9 @@ import { useCanvasStore } from "../hooks/use-canvas-store";
 import { useTransformerSync } from "../hooks/use-transformer-sync";
 import { useCanvasZoomPan } from "../hooks/use-canvas-zoom-pan";
 import { useCanvasHotkeys } from "../hooks/use-canvas-hotkeys";
+import { useSnapCenters } from "../hooks/use-snap-centers";
 import { Html } from "react-konva-utils";
+import { TextEditorOverlay } from "../components/text-editor-overlay";
 
 type PointerPosition = { x: number; y: number };
 
@@ -235,6 +237,7 @@ function FrameNode({
   onDragStart,
   onDragEnd,
   onHover,
+  onDragMove,
   draggable,
 }: {
   block: IEditorBlockFrame;
@@ -242,6 +245,7 @@ function FrameNode({
   onDragStart: (event: KonvaEventObject<DragEvent>) => void;
   onDragEnd: (position: { x: number; y: number }) => void;
   onHover: (hovering: boolean) => void;
+  onDragMove?: (event: KonvaEventObject<DragEvent>) => void;
   draggable: boolean;
 }) {
   const { scaleX, scaleY } = getScaleWithFlip(block);
@@ -273,6 +277,7 @@ function FrameNode({
       {...shadowProps}
       draggable={draggable}
       onDragStart={onDragStart}
+      onDragMove={onDragMove}
       onDragEnd={(event) => {
         const node = event.target;
         onDragEnd({ x: node.x(), y: node.y() });
@@ -290,6 +295,7 @@ function TextNode({
   onDragStart,
   onDragEnd,
   onHover,
+  onDragMove,
   draggable,
 }: {
   block: IEditorBlockText;
@@ -297,6 +303,7 @@ function TextNode({
   onDragStart: (event: KonvaEventObject<DragEvent>) => void;
   onDragEnd: (position: { x: number; y: number }) => void;
   onHover: (hovering: boolean) => void;
+  onDragMove?: (event: KonvaEventObject<DragEvent>) => void;
   draggable: boolean;
 }) {
   const { scaleX, scaleY } = getScaleWithFlip(block);
@@ -328,6 +335,7 @@ function TextNode({
       onMouseEnter={() => onHover(true)}
       onMouseLeave={() => onHover(false)}
       onDragStart={onDragStart}
+      onDragMove={onDragMove}
       onDragEnd={(event) => {
         const node = event.target;
         onDragEnd({ x: node.x(), y: node.y() });
@@ -461,6 +469,7 @@ function DrawNode({
   onDragStart,
   onDragEnd,
   onHover,
+  onDragMove,
   draggable,
 }: {
   block: IEditorBlockDraw;
@@ -468,47 +477,44 @@ function DrawNode({
   onDragStart: (event: KonvaEventObject<DragEvent>) => void;
   onDragEnd: (position: { x: number; y: number }) => void;
   onHover: (hovering: boolean) => void;
+  onDragMove?: (event: KonvaEventObject<DragEvent>) => void;
   draggable: boolean;
 }) {
   const { scaleX, scaleY } = getScaleWithFlip(block);
   const shadowProps = getShadowProps(block);
 
   return (
-    <Group
+    <KonvaLine
       id={blockNodeId(block.id)}
       name="canvas-node"
       x={block.x}
       y={block.y}
-      width={block.width}
-      height={block.height}
+      points={block.points}
+      stroke={block.stroke ?? "#000000"}
+      strokeWidth={block.strokeWidth ?? 3}
+      tension={block.tension ?? 0}
+      lineCap="round"
+      lineJoin="round"
       rotation={block.rotation ?? 0}
-      scaleX={scaleX}
-      scaleY={scaleY}
       opacity={getOpacity(block.opacity)}
       visible={isBlockVisible(block)}
+      scaleX={scaleX}
+      scaleY={scaleY}
       draggable={draggable}
       onClick={onClick}
       onTap={onClick}
       onMouseEnter={() => onHover(true)}
       onMouseLeave={() => onHover(false)}
       onDragStart={onDragStart}
+      onDragMove={onDragMove}
       onDragEnd={(event) => {
         const node = event.target;
         onDragEnd({ x: node.x(), y: node.y() });
       }}
       listening
-    >
-      <KonvaLine
-        points={block.points}
-        stroke={block.stroke ?? "#000000"}
-        strokeWidth={block.strokeWidth ?? 3}
-        tension={block.tension ?? 0}
-        lineCap="round"
-        lineJoin="round"
-        perfectDrawEnabled={false}
-        {...shadowProps}
-      />
-    </Group>
+      {...shadowProps}
+      perfectDrawEnabled={false}
+    />
   );
 }
 
@@ -554,6 +560,7 @@ function HtmlNode({
   onDragStart: (event: KonvaEventObject<DragEvent>) => void;
   onDragEnd: (position: { x: number; y: number }) => void;
   onHover: (hovering: boolean) => void;
+  onDragMove?: (event: KonvaEventObject<DragEvent>) => void;
   draggable: boolean;
   isSelecting: boolean;
 }) {
@@ -596,6 +603,7 @@ function HtmlNode({
       onMouseEnter={() => onHover(true)}
       onMouseLeave={() => onHover(false)}
       onDragStart={onDragStart}
+      onDragMove={onDragMove}
       onDragEnd={(event) => {
         const node = event.target;
         onDragEnd({ x: node.x(), y: node.y() });
@@ -750,7 +758,7 @@ const calculateBlockPlacement = (
       const scale = Math.min(
         1,
         MAX_IMAGE_DIMENSION /
-          Math.max(pendingImageData.width, pendingImageData.height)
+        Math.max(pendingImageData.width, pendingImageData.height)
       );
       width = Math.max(1, Math.round(pendingImageData.width * scale));
       height = Math.max(1, Math.round(pendingImageData.height * scale));
@@ -989,6 +997,11 @@ function EditorCanvas() {
     setStagePosition,
   });
 
+  const { guides, handleDragMove, handleDragEnd } = useSnapCenters(
+    stageRef,
+    size
+  );
+
   const handleStageRef = React.useCallback(
     (node: Konva.Stage | null) => {
       stageRef.current = node;
@@ -1000,12 +1013,17 @@ function EditorCanvas() {
   const copySelectedBlocks = useEditorStore(
     (state) => state.copySelectedBlocks
   );
+
   const pasteBlocks = useEditorStore((state) => state.pasteBlocks);
   const stage = useEditorStore((state) => state.stage);
 
   useCanvasHotkeys({
     setMode,
-    deleteSelectedBlocks,
+    deleteSelectedBlocks: () => {
+      deleteSelectedBlocks();
+      // Also clear guides
+      handleDragEnd();
+    },
     copySelectedBlocks,
     pasteBlocks,
     stage,
@@ -1062,7 +1080,7 @@ function EditorCanvas() {
           textBlockSchema.parse({
             id: generateId(),
             type: "text",
-            label: `Text ${blocks.length + 1}`,
+            label: `Text ${blocks.length + 1} `,
             x: placement.x,
             y: placement.y,
             width: placement.width,
@@ -1098,7 +1116,7 @@ function EditorCanvas() {
           frameBlockSchema.parse({
             id: generateId(),
             type: "frame",
-            label: `Frame ${blocks.length + 1}`,
+            label: `Frame ${blocks.length + 1} `,
             x: placement.x,
             y: placement.y,
             width: placement.width,
@@ -1129,7 +1147,7 @@ function EditorCanvas() {
           arrowBlockSchema.parse({
             id: generateId(),
             type: "arrow",
-            label: `Arrow ${blocks.length + 1}`,
+            label: `Arrow ${blocks.length + 1} `,
             x: placement.blockPosition.x,
             y: placement.blockPosition.y,
             width: placement.bounds.width,
@@ -1165,7 +1183,7 @@ function EditorCanvas() {
           imageBlockSchema.parse({
             id: generateId(),
             type: "image",
-            label: `Image ${blocks.length + 1}`,
+            label: `Image ${blocks.length + 1} `,
             x: placement.x,
             y: placement.y,
             width: placement.width,
@@ -1213,7 +1231,7 @@ function EditorCanvas() {
       drawBlockSchema.parse({
         id: generateId(),
         type: "draw",
-        label: `Draw ${blocks.length + 1}`,
+        label: `Draw ${blocks.length + 1} `,
         x: bounds.minX,
         y: bounds.minY,
         width: bounds.width,
@@ -1694,8 +1712,9 @@ function EditorCanvas() {
           setBlockPosition(id, position);
         }
       }
+      handleDragEnd(); // Clear guides after drag ends
     },
-    [setBlockPosition, blocks, selectedIds, copySelectedBlocks, pasteBlocks]
+    [setBlockPosition, blocks, selectedIds, copySelectedBlocks, pasteBlocks, handleDragEnd]
   );
 
   const handleTransform = React.useCallback(() => {
@@ -1774,7 +1793,7 @@ function EditorCanvas() {
         // This gives us a more accurate scale for the arrow length
         const originalDiagonal = Math.sqrt(
           arrowBlock.width * arrowBlock.width +
-            arrowBlock.height * arrowBlock.height
+          arrowBlock.height * arrowBlock.height
         );
         const newDiagonal = Math.sqrt(width * width + height * height);
         const scale = originalDiagonal > 0 ? newDiagonal / originalDiagonal : 1;
@@ -1927,8 +1946,8 @@ function EditorCanvas() {
             ? isTextEditing
               ? "default"
               : isStageDragging
-              ? "grabbing"
-              : "grab"
+                ? "grabbing"
+                : "grab"
             : "default",
         }}
       >
@@ -1966,19 +1985,20 @@ function EditorCanvas() {
           ) : null}
         </Layer>
 
+        <Layer listening={false}>
+          {guides?.map((guide, i) => (
+            <KonvaLine
+              key={i}
+              points={guide.points}
+              stroke="rgb(0, 161, 255)"
+              strokeWidth={1}
+              dash={[4, 6]}
+            />
+          ))}
+        </Layer>
+
         <Layer>
           {blocks.map((block) => {
-            const handleHover = (hovering: boolean) => {
-              if (!isSelectMode) {
-                return;
-              }
-              if (hovering) {
-                setHoveredId(block.id);
-              } else if (hoveredId === block.id) {
-                setHoveredId(null);
-              }
-            };
-
             const dragHandlers = {
               onDragStart: (evt: KonvaEventObject<DragEvent>) => {
                 evt.cancelBubble = true;
@@ -2035,10 +2055,10 @@ function EditorCanvas() {
                   originalPositionsRef.current.clear();
                 }
               },
-              onDragEnd: (position: { x: number; y: number }) =>
-                handleNodeDragEnd(block.id, position),
-              onHover: handleHover,
-              draggable: isSelectMode && !isTextEditing,
+              onDragEnd: (pos) => handleNodeDragEnd(block.id, pos),
+              onHover: (h) => !isDrawing && setHoveredId(h ? block.id : null),
+              onDragMove: handleDragMove,
+              draggable: isSelectMode,
             };
             const handleBlockClick = (
               evt: KonvaEventObject<MouseEvent | TouchEvent>
@@ -2109,6 +2129,7 @@ function EditorCanvas() {
                   onClick={handleBlockClick}
                   {...dragHandlers}
                   isSelecting={isSelecting}
+                  onDragMove={handleDragMove}
                 />
               );
             }
@@ -2129,21 +2150,21 @@ function EditorCanvas() {
 
           {hoveredId && isSelectMode
             ? (() => {
-                const block = blocks.find((item) => item.id === hoveredId);
-                if (!block || selectedIds.includes(block.id)) {
-                  return null;
-                }
-                return <HoverOutline block={block} zoom={zoom} />;
-              })()
+              const block = blocks.find((item) => item.id === hoveredId);
+              if (!block || selectedIds.includes(block.id)) {
+                return null;
+              }
+              return <HoverOutline block={block} zoom={zoom} />;
+            })()
             : null}
         </Layer>
 
         <Layer listening={false}>
           <SelectionOutline rect={selectionRect} zoom={zoom} />
           {isPlacingBlock &&
-          placementStart &&
-          placementHasMoved &&
-          isPlacementMode() ? (
+            placementStart &&
+            placementHasMoved &&
+            isPlacementMode() ? (
             <PlacementPreview
               mode={mode as "text" | "frame" | "arrow" | "image"}
               start={placementStart}
@@ -2176,43 +2197,19 @@ function EditorCanvas() {
       </Stage>
 
       {editingText && editingBlock ? (
-        <textarea
-          style={{
-            position: "fixed",
-            left: editingText.clientX,
-            top: editingText.clientY,
-            width: editingText.width,
-            minHeight: editingText.height,
-            transformOrigin: "left top",
-            zIndex: 30,
-            fontSize: `${editingBlock.fontSize}px`,
-            lineHeight: `${editingBlock.lineHeight}px`,
-            fontFamily: editingBlock.font.family,
-            fontWeight: editingBlock.font.weight,
-            color: editingBlock.color,
-            border: "1px solid #4f46e5",
-            padding: "8px",
-            outline: "none",
-            background: "white",
-          }}
-          value={editingText.value}
-          onChange={(event) =>
+        <TextEditorOverlay
+          editingText={editingText}
+          block={editingBlock}
+          onChange={(value) =>
             setEditingText((prev) =>
-              prev ? { ...prev, value: event.target.value } : prev
+              prev ? { ...prev, value } : prev
             )
           }
-          onBlur={commitTextEdit}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              setEditingText(null);
-              setIsTextEditing(false);
-            }
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              commitTextEdit();
-            }
+          onCommit={commitTextEdit}
+          onCancel={() => {
+            setEditingText(null);
+            setIsTextEditing(false);
           }}
-          autoFocus
         />
       ) : null}
 

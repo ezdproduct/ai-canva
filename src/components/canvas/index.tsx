@@ -19,25 +19,32 @@ function Canvas({ template }: CanvasProps) {
   }, [template]);
 
   const canvasSize = useEditorStore((state) => state.canvas.size);
+  const isSizePickerOpen = useEditorStore((state) => state.canvas.isSizePickerOpen);
   const updateCanvasSize = useEditorStore((state) => state.updateCanvasSize);
-
-  if (canvasSize.width === 0 || canvasSize.height === 0) {
-    return (
-      <SizePickerDialog
-        open={true}
-        onSelectSize={(width, height) => updateCanvasSize({ width, height })}
-      />
-    );
-  }
+  const setIsSizePickerOpen = useEditorStore((state) => state.setIsSizePickerOpen);
 
   return (
-    <div className="editor-canvas-wrapper h-screen bg-slate-100 dark:bg-slate-900">
+    <div className="editor-canvas-wrapper h-screen bg-slate-100 dark:bg-slate-900 relative">
       <div className="flex h-screen">
         <EditorLeftSide />
         <EditorCanvas />
         <EditorRightSide />
       </div>
       <EditorBottomToolbar />
+
+      <SizePickerDialog
+        open={(canvasSize.width === 0 || canvasSize.height === 0) || isSizePickerOpen}
+        onSelectSize={(width, height) => {
+          updateCanvasSize({ width, height });
+          setIsSizePickerOpen(false);
+        }}
+        onClose={() => {
+          if (canvasSize.width === 0 || canvasSize.height === 0) {
+            updateCanvasSize({ width: 1920, height: 1080 });
+          }
+          setIsSizePickerOpen(false);
+        }}
+      />
     </div>
   );
 }

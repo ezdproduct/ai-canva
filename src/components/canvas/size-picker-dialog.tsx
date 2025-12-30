@@ -25,6 +25,7 @@ import { Monitor, Smartphone, Type, LayoutTemplate } from "lucide-react";
 interface SizePickerDialogProps {
     open: boolean;
     onSelectSize: (width: number, height: number) => void;
+    onClose: () => void;
 }
 
 const PRESETS = [
@@ -56,7 +57,7 @@ const PRESETS = [
     },
 ];
 
-export function SizePickerDialog({ open, onSelectSize }: SizePickerDialogProps) {
+export function SizePickerDialog({ open, onSelectSize, onClose }: SizePickerDialogProps) {
     const [width, setWidth] = React.useState(1080);
     const [height, setHeight] = React.useState(1080);
 
@@ -66,13 +67,18 @@ export function SizePickerDialog({ open, onSelectSize }: SizePickerDialogProps) 
     };
 
     return (
-        <Dialog open={open}>
-            <DialogContent className="max-w-3xl" onInteractOutside={(e) => e.preventDefault()}>
-                <DialogHeader>
+        <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+            <DialogContent
+                className="max-w-3xl"
+                onInteractOutside={(e) => e.preventDefault()}
+                overlayClassName="bg-transparent"
+            >
+                <DialogHeader className="relative">
                     <DialogTitle>Choose a canvas size</DialogTitle>
                     <DialogDescription>
                         Select a preset or create a custom size to start your design.
                     </DialogDescription>
+
                 </DialogHeader>
 
                 <Tabs defaultValue="presets" className="w-full">

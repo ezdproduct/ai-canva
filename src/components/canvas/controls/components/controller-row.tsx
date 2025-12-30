@@ -24,7 +24,7 @@ const ControllerRow = React.forwardRef<HTMLDivElement, ControllerRowProps>(
       <div
         ref={ref}
         className={cn(
-          "flex items-center gap-2.5 pl-2 text-xs text-foreground/70",
+          "flex items-center gap-2.5 text-xs text-foreground/70",
           className
         )}
         {...props}

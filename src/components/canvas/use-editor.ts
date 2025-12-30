@@ -43,6 +43,8 @@ interface EditorCanvasState {
   stagePosition: { x: number; y: number };
   containerSize: { width: number; height: number };
   hasCentered: boolean;
+  hasInitialZoomed: boolean;
+  isSizePickerOpen: boolean;
 }
 
 interface EditorState {
@@ -58,6 +60,7 @@ interface EditorState {
   stage: Konva.Stage | null;
   pendingImageData: { url: string; width: number; height: number } | null;
   clipboard: IEditorBlocks[] | null;
+  chatAttachments: { file: File; url: string }[];
 }
 
 interface EditorActions {
@@ -110,6 +113,10 @@ interface EditorActions {
   exportToJson: () => void;
   copySelectedBlocks: () => void;
   pasteBlocks: (position?: { x: number; y: number }) => void;
+  setIsSizePickerOpen: (isOpen: boolean) => void;
+  setChatAttachments: (attachments: { file: File; url: string }[]) => void;
+  toggleLockBlock: (id: string) => void;
+  reorderBlock: (id: string, newIndex: number) => void;
 }
 
 export type EditorStore = EditorState & EditorActions;
@@ -183,10 +190,13 @@ const buildInitialState = (template?: Template): EditorState => {
       background,
       mode: "select",
       isTextEditing: false,
-      zoom: 1,
+      zoom: 0.5,
       stagePosition: { x: 0, y: 0 },
+
       containerSize: { width: 0, height: 0 },
       hasCentered: false,
+      hasInitialZoomed: false,
+      isSizePickerOpen: false,
     },
     history: {
       undo: [],
@@ -195,6 +205,7 @@ const buildInitialState = (template?: Template): EditorState => {
     stage: null,
     pendingImageData: null,
     clipboard: null,
+    chatAttachments: [],
   };
 };
 
@@ -319,6 +330,26 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
         ...state.canvas,
         containerSize: size,
       };
+
+      // Initial Zoom Logic: Smart Fit
+      // Target: max 60% of viewport width OR max 80% of viewport height
+      // We pick the smaller zoom to satisfy both constraints (contain strategy)
+      if (
+        !nextCanvas.hasInitialZoomed &&
+        size.width > 0 &&
+        size.height > 0 &&
+        nextCanvas.size.width > 0 &&
+        nextCanvas.size.height > 0
+      ) {
+        const zoomX = (size.width * 0.6) / nextCanvas.size.width;
+        const zoomY = (size.height * 0.8) / nextCanvas.size.height;
+
+        const targetZoom = Math.min(zoomX, zoomY);
+
+        nextCanvas.zoom = targetZoom;
+        nextCanvas.hasInitialZoomed = true;
+      }
+
       if (state.canvas.hasCentered) {
         return {
           ...state,
@@ -383,6 +414,23 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
         size: nextSize,
         hasCentered: false,
       };
+
+      // Smart Fit Zoom on Size Change
+      const { containerSize } = state.canvas;
+      if (
+        containerSize.width > 0 &&
+        containerSize.height > 0 &&
+        nextSize.width > 0 &&
+        nextSize.height > 0
+      ) {
+        const zoomX = (containerSize.width * 0.6) / nextSize.width;
+        const zoomY = (containerSize.height * 0.8) / nextSize.height;
+        const targetZoom = Math.min(zoomX, zoomY);
+
+        // Optional: limit max zoom to 1 or something reasonable if needed, 
+        // but finding best fit is the priority.
+        nextCanvas.zoom = targetZoom;
+      }
       const position = computeCenteredStagePosition({
         ...state,
         canvas: nextCanvas,
@@ -422,6 +470,20 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
         },
       };
     });
+  },
+
+  setIsSizePickerOpen: (isOpen) => {
+    set((state) => ({
+      ...state,
+      canvas: { ...state.canvas, isSizePickerOpen: isOpen },
+    }));
+  },
+
+  setChatAttachments: (attachments) => {
+    set((state) => ({
+      ...state,
+      chatAttachments: attachments,
+    }));
   },
 
   addTextBlock: () => {
@@ -947,6 +1009,40 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
           redo: [],
         },
       };
+    });
+  },
+
+  toggleLockBlock: (id) => {
+    set((state) => {
+      const block = state.blocksById[id];
+      if (!block) return state;
+      const snapshot = createSnapshot(state);
+      return {
+        ...state,
+        blocksById: {
+          ...state.blocksById,
+          [id]: { ...block, locked: !block.locked },
+        },
+        history: {
+          undo: [snapshot, ...state.history.undo],
+          redo: [],
+        },
+      };
+    });
+  },
+
+  reorderBlock: (id, newIndex) => {
+    set((state) => {
+      const blockOrder = [...state.blockOrder];
+      const oldIndex = blockOrder.indexOf(id);
+      if (oldIndex === -1) return state;
+
+      // Remove from old position
+      blockOrder.splice(oldIndex, 1);
+      // Insert at new position
+      blockOrder.splice(newIndex, 0, id);
+
+      return { ...state, blockOrder };
     });
   },
 

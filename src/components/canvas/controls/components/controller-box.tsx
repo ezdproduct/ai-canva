@@ -15,6 +15,7 @@ interface ControllerBoxProps {
   className?: string;
   itemClassName?: string;
   contentClassName?: string;
+  action?: React.ReactNode;
 }
 
 const ControllerBox = React.forwardRef<HTMLDivElement, ControllerBoxProps>(
@@ -27,6 +28,7 @@ const ControllerBox = React.forwardRef<HTMLDivElement, ControllerBoxProps>(
       className,
       itemClassName,
       contentClassName,
+      action,
     },
     ref
   ) => {
@@ -36,7 +38,7 @@ const ControllerBox = React.forwardRef<HTMLDivElement, ControllerBoxProps>(
       <Accordion
         type="single"
         collapsible
-        className={cn("px-4", className)}
+        className={cn("px-2", className)}
         defaultValue={defaultOpen ? generatedId : undefined}
       >
         <AccordionItem
@@ -50,9 +52,12 @@ const ControllerBox = React.forwardRef<HTMLDivElement, ControllerBoxProps>(
             itemClassName
           )}
         >
-          <AccordionTrigger className="text-sm font-semibold">
-            {title}
-          </AccordionTrigger>
+          <div className="flex items-center justify-between pr-2">
+            <AccordionTrigger className="text-sm font-semibold hover:no-underline py-4">
+              {title}
+            </AccordionTrigger>
+            {action && <div onClick={(e) => e.stopPropagation()}>{action}</div>}
+          </div>
           <AccordionContent
             className={cn("flex flex-col gap-2.5", contentClassName)}
           >
