@@ -217,7 +217,7 @@ export function AiChatPanel() {
             } catch {
                 sendMessage({ text: input }, { body: buildRequestBody() });
                 setInput("");
-                setChatAttachment(null);
+                setChatAttachments([]);
                 if (fileInputRef.current) fileInputRef.current.value = "";
             }
         },
