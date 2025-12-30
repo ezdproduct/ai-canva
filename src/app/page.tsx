@@ -9,7 +9,7 @@ export default function Page() {
   return (
     <ThemeProvider>
       <Tooltip.Provider>
-        <Canvas template={demoTemplate1} />
+        <Canvas />
       </Tooltip.Provider>
     </ThemeProvider>
   );

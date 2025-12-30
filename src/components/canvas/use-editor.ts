@@ -179,7 +179,7 @@ const buildInitialState = (template?: Template): EditorState => {
     selectedIds: [],
     hoveredId: null,
     canvas: {
-      size: canvasSize,
+      size: canvasSize || { width: 0, height: 0 },
       background,
       mode: "select",
       isTextEditing: false,
@@ -259,9 +259,9 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       state.canvas.isTextEditing === value
         ? state
         : {
-            ...state,
-            canvas: { ...state.canvas, isTextEditing: value },
-          }
+          ...state,
+          canvas: { ...state.canvas, isTextEditing: value },
+        }
     );
   },
 
@@ -389,10 +389,10 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       });
       const centeredCanvas = position
         ? {
-            ...nextCanvas,
-            stagePosition: position,
-            hasCentered: true,
-          }
+          ...nextCanvas,
+          stagePosition: position,
+          hasCentered: true,
+        }
         : nextCanvas;
       return {
         ...state,
@@ -1084,7 +1084,12 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     if (!stage) {
       return;
     }
-    await downloadStageAsImage(stage, blocksArray(state), selectedIds);
+    await downloadStageAsImage(
+      stage,
+      blocksArray(state),
+      [],
+      state.canvas.size
+    );
   },
 
   exportToJson: () => {

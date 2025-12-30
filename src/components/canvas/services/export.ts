@@ -332,7 +332,8 @@ function hideNonSelectedElements(
 export const captureSelectedBlocksAsImage = async (
   stage: Konva.Stage | null,
   blocks: IEditorBlocks[],
-  selectedIds: string[] = []
+  selectedIds: string[] = [],
+  size?: { width: number; height: number }
 ): Promise<string | null> => {
   if (!stage) {
     return null;
@@ -370,7 +371,34 @@ export const captureSelectedBlocksAsImage = async (
       });
     }
 
-    // Export entire canvas
+    // If size is provided, export the specific canvas area
+    // We must reset stage zoom/pan to ensure we capture the absolute coordinates 0,0
+    if (size) {
+      const oldScale = stage.scale();
+      const oldPos = stage.position();
+
+      // Reset to 100% scale and 0,0 position
+      stage.scale({ x: 1, y: 1 });
+      stage.position({ x: 0, y: 0 });
+      stage.draw(); // Force redraw
+
+      try {
+        return stage.toDataURL({
+          pixelRatio: 1, // Force 1x pixel ratio for exact dimensions
+          x: 0,
+          y: 0,
+          width: size.width,
+          height: size.height,
+        });
+      } finally {
+        // Restore original state
+        if (oldScale) stage.scale(oldScale);
+        if (oldPos) stage.position(oldPos);
+        stage.draw();
+      }
+    }
+
+    // Fallback: Export entire canvas
     return stage.toDataURL({ pixelRatio: getDefaultPixelRatio() });
   } finally {
     // Restore visibility
@@ -393,12 +421,14 @@ export const captureStageAsImage = captureSelectedBlocksAsImage;
 export const downloadStageAsImage = async (
   stage: Konva.Stage,
   blocks: IEditorBlocks[],
-  selectedIds: string[] = []
+  selectedIds: string[] = [],
+  size?: { width: number; height: number }
 ) => {
   const dataUrl = await captureSelectedBlocksAsImage(
     stage,
     blocks,
-    selectedIds
+    selectedIds,
+    size
   );
 
   if (!dataUrl) {

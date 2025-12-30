@@ -2,7 +2,7 @@ import { templateSchema } from "@/lib/schema";
 import type { IEditorBlocks, IEditorSize, Template } from "@/lib/schema";
 import { blockSchema } from "@/lib/schema";
 
-export const DEFAULT_CANVAS_SIZE: IEditorSize = { width: 1280, height: 720 };
+export const DEFAULT_CANVAS_SIZE: IEditorSize = { width: 0, height: 0 };
 export const MAX_IMAGE_DIMENSION = 640;
 
 export const ensureBlockDefaults = (block: IEditorBlocks): IEditorBlocks => ({
