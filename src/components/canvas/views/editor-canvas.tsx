@@ -360,6 +360,7 @@ function ImageNode({
   onDragStart: (event: KonvaEventObject<DragEvent>) => void;
   onDragEnd: (position: { x: number; y: number }) => void;
   onHover: (hovering: boolean) => void;
+  onDragMove?: (event: KonvaEventObject<DragEvent>) => void;
   draggable: boolean;
 }) {
   const image = useImageElement(block.url);
@@ -416,6 +417,7 @@ function ArrowNode({
   onDragStart: (event: KonvaEventObject<DragEvent>) => void;
   onDragEnd: (position: { x: number; y: number }) => void;
   onHover: (hovering: boolean) => void;
+  onDragMove?: (event: KonvaEventObject<DragEvent>) => void;
   draggable: boolean;
 }) {
   const { scaleX, scaleY } = getScaleWithFlip(block);
