@@ -352,6 +352,7 @@ function ImageNode({
   onDragStart,
   onDragEnd,
   onHover,
+  onDragMove,
   draggable,
 }: {
   block: IEditorBlockImage;
@@ -407,6 +408,7 @@ function ArrowNode({
   onDragStart,
   onDragEnd,
   onHover,
+  onDragMove,
   draggable,
 }: {
   block: IEditorBlockArrow;
@@ -552,6 +554,7 @@ function HtmlNode({
   onDragStart,
   onDragEnd,
   onHover,
+  onDragMove,
   draggable,
   isSelecting,
 }: {
