@@ -2060,8 +2060,8 @@ function EditorCanvas() {
                   originalPositionsRef.current.clear();
                 }
               },
-              onDragEnd: (pos) => handleNodeDragEnd(block.id, pos),
-              onHover: (h) => !isDrawing && setHoveredId(h ? block.id : null),
+              onDragEnd: (pos: { x: number; y: number }) => handleNodeDragEnd(block.id, pos),
+              onHover: (h: boolean) => !isDrawing && setHoveredId(h ? block.id : null),
               onDragMove: handleDragMove,
               draggable: isSelectMode,
             };
